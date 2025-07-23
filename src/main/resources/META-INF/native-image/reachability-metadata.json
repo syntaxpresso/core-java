@@ -1,0 +1,45 @@
+{
+  "resources": [
+    {
+      "glob": "lib/x86_64-linux-gnu-tree-sitter-java.so"
+    },
+    {
+      "glob": "lib/x86_64-linux-gnu-tree-sitter.so"
+    }
+  ],
+  "bundles": [],
+  "jni": [
+    {
+      "type": "java.lang.Boolean",
+      "methods": [
+        {
+          "name": "getBoolean",
+          "parameterTypes": ["java.lang.String"]
+        }
+      ]
+    },
+    {
+      "type": "org.treesitter.TSNode",
+      "fields": [
+        {
+          "name": "context0"
+        },
+        {
+          "name": "context1"
+        },
+        {
+          "name": "context2"
+        },
+        {
+          "name": "context3"
+        },
+        {
+          "name": "idPtr"
+        },
+        {
+          "name": "treePtr"
+        }
+      ]
+    }
+  ]
+}
