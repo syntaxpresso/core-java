@@ -35,6 +35,10 @@ application {
 
 tasks.named<Test>("test") {
     useJUnitPlatform()
+    testLogging {
+        showStandardStreams = true
+        events("passed", "skipped", "failed")
+    }
 }
 
 java {
@@ -45,6 +49,7 @@ java {
 }
 
 graalvmNative {
+    testSupport.set(true)
     binaries {
         named("main") {
             mainClass.set("io.github.syntaxpresso.core.java.Main")
