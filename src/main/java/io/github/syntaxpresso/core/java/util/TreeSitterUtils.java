@@ -8,6 +8,9 @@ import java.util.Optional;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.treesitter.TSParser;
+import org.treesitter.TSQuery;
+import org.treesitter.TSQueryCursor;
+import org.treesitter.TSQueryCursor.TSMatchIterator;
 import org.treesitter.TSTree;
 
 @NoArgsConstructor
@@ -39,5 +42,28 @@ public class TreeSitterUtils {
 
   public boolean isSourceCodeValid(String sourceCode) {
     return this.parse(sourceCode).isPresent();
+  }
+
+  public Boolean isMainClass(TSTree tree) {
+    String mainMethodQuery =
+        ""
+            + "(method_declaration "
+            + "  (modifiers) @mods "
+            + "  type: (void_type) "
+            + "  name: (identifier) @name "
+            + "  parameters: (formal_parameters "
+            + "    (formal_parameter "
+            + "      type: (array_type element: (type_identifier) @param_type) "
+            + "    ) "
+            + "  ) "
+            + "  (#match? @mods \"public static\")"
+            + "  (#eq? @name \"main\") "
+            + "  (#eq? @param_type \"String\") "
+            + ")";
+    TSQuery query = new TSQuery(this.parser.getLanguage(), mainMethodQuery);
+    TSQueryCursor queryCursor = new TSQueryCursor();
+    queryCursor.exec(query, tree.getRootNode());
+    TSMatchIterator captures = queryCursor.getCaptures();
+    return captures.hasNext();
   }
 }
