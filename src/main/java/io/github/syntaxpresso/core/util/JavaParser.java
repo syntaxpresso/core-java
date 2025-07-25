@@ -1,4 +1,4 @@
-package io.github.syntaxpresso.core.java.util;
+package io.github.syntaxpresso.core.util;
 
 import org.treesitter.TSLanguage;
 import org.treesitter.TSParser;

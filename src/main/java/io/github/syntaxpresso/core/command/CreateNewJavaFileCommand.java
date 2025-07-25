@@ -1,9 +1,9 @@
-package io.github.syntaxpresso.core.java.command;
+package io.github.syntaxpresso.core.command;
 
-import io.github.syntaxpresso.core.java.command.dtos.CreateNewJavaFileResponse;
-import io.github.syntaxpresso.core.java.command.enums.JavaFileTemplate;
-import io.github.syntaxpresso.core.java.common.DataTransferObject;
-import io.github.syntaxpresso.core.java.util.TreeSitterUtils;
+import io.github.syntaxpresso.core.command.dtos.CreateNewJavaFileResponse;
+import io.github.syntaxpresso.core.command.enums.JavaFileTemplate;
+import io.github.syntaxpresso.core.common.DataTransferObject;
+import io.github.syntaxpresso.core.util.TreeSitterUtils;
 import java.util.concurrent.Callable;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;

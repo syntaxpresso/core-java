@@ -1,4 +1,4 @@
-package io.github.syntaxpresso.core.java.util;
+package io.github.syntaxpresso.core.util;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;

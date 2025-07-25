@@ -31,7 +31,7 @@ dependencies {
 }
 
 application {
-    mainClass = "io.github.syntaxpresso.core.java.Main"
+    mainClass = "io.github.syntaxpresso.core.Main"
 }
 
 tasks.named<Test>("test") {
@@ -53,7 +53,7 @@ graalvmNative {
     testSupport.set(true)
     binaries {
         named("main") {
-            mainClass.set("io.github.syntaxpresso.core.java.Main")
+            mainClass.set("io.github.syntaxpresso.core.Main")
             buildArgs.add("--enable-native-access=ALL-UNNAMED")
         }
     }

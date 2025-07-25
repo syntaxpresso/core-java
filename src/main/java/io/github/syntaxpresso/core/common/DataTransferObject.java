@@ -1,4 +1,4 @@
-package io.github.syntaxpresso.core.java.common;
+package io.github.syntaxpresso.core.common;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
