@@ -4,15 +4,15 @@
       "type": "groovy.lang.Closure"
     },
     {
-      "type": "io.github.syntaxpresso.core.java.Main",
+      "type": "io.github.syntaxpresso.core.Main",
       "allDeclaredFields": true
     },
     {
-      "type": "io.github.syntaxpresso.core.java.command.CreateNewJavaFileCommand",
+      "type": "io.github.syntaxpresso.core.command.CreateNewJavaFileCommand",
       "allDeclaredFields": true
     },
     {
-      "type": "io.github.syntaxpresso.core.java.command.TestCommand",
+      "type": "io.github.syntaxpresso.core.command.TestCommand",
       "allDeclaredFields": true,
       "methods": [
         {

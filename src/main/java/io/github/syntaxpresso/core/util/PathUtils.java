@@ -1,6 +1,6 @@
-package io.github.syntaxpresso.core.java.util;
+package io.github.syntaxpresso.core.util;
 
-import io.github.syntaxpresso.core.java.common.enums.SourceDirectoryType;
+import io.github.syntaxpresso.core.common.enums.SourceDirectoryType;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;

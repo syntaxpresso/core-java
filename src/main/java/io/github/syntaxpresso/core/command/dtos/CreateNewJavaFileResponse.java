@@ -1,4 +1,4 @@
-package io.github.syntaxpresso.core.java.command.dtos;
+package io.github.syntaxpresso.core.command.dtos;
 
 import java.io.Serializable;
 import java.util.Objects;
