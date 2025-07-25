@@ -106,4 +106,13 @@ public class TreeSitterUtils {
     }
     return Optional.empty();
   }
+
+  public Optional<String> getSourceCode(Path filePath) {
+    try {
+      String content = Files.readString(filePath, StandardCharsets.UTF_8);
+      return Optional.of(content);
+    } catch (IOException e) {
+      return Optional.empty();
+    }
+  }
 }
