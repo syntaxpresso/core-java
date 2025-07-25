@@ -1,22 +1,76 @@
 {
   "reflection": [
     {
+      "type": "com.fasterxml.jackson.databind.ext.Java7SupportImpl",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
       "type": "groovy.lang.Closure"
     },
     {
-      "type": "io.github.syntaxpresso.core.Main",
+      "type": "io.github.syntaxpresso.core.Core",
       "allDeclaredFields": true
     },
     {
-      "type": "io.github.syntaxpresso.core.command.CreateNewJavaFileCommand",
+      "type": "io.github.syntaxpresso.core.command.GenericCommand",
       "allDeclaredFields": true
     },
     {
-      "type": "io.github.syntaxpresso.core.command.TestCommand",
+      "type": "io.github.syntaxpresso.core.command.JavaCommand",
       "allDeclaredFields": true,
       "methods": [
         {
           "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.syntaxpresso.core.command.TestCommand",
+      "allDeclaredFields": true
+    },
+    {
+      "type": "io.github.syntaxpresso.core.command.java.CreateNewJavaFileCommand",
+      "allDeclaredFields": true,
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.syntaxpresso.core.command.java.dto.CreateNewJavaFileResponse",
+      "allDeclaredFields": true,
+      "allDeclaredMethods": true,
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "io.github.syntaxpresso.core.common.DataTransferObject",
+      "allDeclaredFields": true,
+      "methods": [
+        {
+          "name": "getData",
+          "parameterTypes": []
+        },
+        {
+          "name": "getErrorReason",
+          "parameterTypes": []
+        },
+        {
+          "name": "getSucceed",
           "parameterTypes": []
         }
       ]
@@ -91,10 +145,6 @@
     {
       "type": "org.treesitter.TSNode",
       "unsafeAllocated": true
-    },
-    {
-      "type": "org.treesitter.TSQueryCapture",
-      "unsafeAllocated": true
     }
   ],
   "resources": [
@@ -110,9 +160,6 @@
   ],
   "bundles": [],
   "jni": [
-    {
-      "type": "[Lorg.treesitter.TSQueryCapture;"
-    },
     {
       "type": "java.lang.Boolean",
       "methods": [
@@ -144,34 +191,6 @@
         },
         {
           "name": "treePtr"
-        }
-      ]
-    },
-    {
-      "type": "org.treesitter.TSQueryCapture",
-      "fields": [
-        {
-          "name": "index"
-        },
-        {
-          "name": "node"
-        }
-      ]
-    },
-    {
-      "type": "org.treesitter.TSQueryMatch",
-      "fields": [
-        {
-          "name": "captureIndex"
-        },
-        {
-          "name": "captures"
-        },
-        {
-          "name": "id"
-        },
-        {
-          "name": "patternIndex"
         }
       ]
     }

@@ -9,14 +9,16 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
+
+import io.github.syntaxpresso.core.service.java.JavaCodeAnalizerService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.treesitter.TSTree;
 
 @DisplayName("TreeSitterUtils Integration Tests")
-class TreeSitterUtilsTest {
+class JavaCodeAnalizerServiceTest {
 
-  private final TreeSitterUtils treeSitterUtils = new TreeSitterUtils();
+  private final JavaCodeAnalizerService javaCodeAnalizerService = new JavaCodeAnalizerService();
 
   @Test
   @DisplayName("parse(Path) should return tree for a valid file")
@@ -25,7 +27,7 @@ class TreeSitterUtilsTest {
     try {
       tempFile = Files.createTempFile("test_valid", ".java");
       Files.writeString(tempFile, "public class Valid { }");
-      Optional<TSTree> result = treeSitterUtils.parse(tempFile);
+      Optional<TSTree> result = javaCodeAnalizerService.parse(tempFile);
       assertTrue(result.isPresent(), "Expected a TSTree for a valid file path");
     } finally {
       if (tempFile != null) {
@@ -41,7 +43,7 @@ class TreeSitterUtilsTest {
     try {
       tempFile = Files.createTempFile("test_invalid", ".java");
       Files.writeString(tempFile, "public class Invalid {"); // Missing closing brace
-      Optional<TSTree> result = treeSitterUtils.parse(tempFile);
+      Optional<TSTree> result = javaCodeAnalizerService.parse(tempFile);
       assertFalse(result.isPresent(), "Expected empty for an invalid file path");
     } finally {
       if (tempFile != null) {
@@ -54,7 +56,7 @@ class TreeSitterUtilsTest {
   @DisplayName("parse(byte[]) should return tree for valid bytes")
   void parseBytes_whenBytesAreValid_shouldReturnTree() {
     byte[] sourceBytes = "class Valid { }".getBytes(StandardCharsets.UTF_8);
-    Optional<TSTree> result = treeSitterUtils.parse(sourceBytes);
+    Optional<TSTree> result = javaCodeAnalizerService.parse(sourceBytes);
     assertTrue(result.isPresent(), "Expected a TSTree for valid bytes");
   }
 
@@ -62,7 +64,7 @@ class TreeSitterUtilsTest {
   @DisplayName("parse(String) should return tree for a valid string")
   void parseString_whenStringIsValid_shouldReturnTree() {
     String sourceCode = "class Valid { }";
-    Optional<TSTree> result = treeSitterUtils.parse(sourceCode);
+    Optional<TSTree> result = javaCodeAnalizerService.parse(sourceCode);
     assertTrue(result.isPresent(), "Expected a TSTree for a valid string");
   }
 
@@ -70,14 +72,14 @@ class TreeSitterUtilsTest {
   @DisplayName("isSourceCodeValid should return true for valid source")
   void isSourceCodeValid_whenSourceIsValid_shouldReturnTrue() {
     String sourceCode = "class Valid { }";
-    assertTrue(treeSitterUtils.isSourceCodeValid(sourceCode), "Expected true for valid source");
+    assertTrue(javaCodeAnalizerService.isSourceCodeValid(sourceCode), "Expected true for valid source");
   }
 
   @Test
   @DisplayName("isSourceCodeValid should return false for invalid source")
   void isSourceCodeValid_whenSourceIsInvalid_shouldReturnFalse() {
     String sourceCode = "class Invalid {";
-    assertFalse(treeSitterUtils.isSourceCodeValid(sourceCode), "Expected false for invalid source");
+    assertFalse(javaCodeAnalizerService.isSourceCodeValid(sourceCode), "Expected false for invalid source");
   }
 
   @Test
@@ -90,18 +92,18 @@ class TreeSitterUtilsTest {
           }
         }
         """;
-    Optional<TSTree> tree = treeSitterUtils.parse(sourceCode);
+    Optional<TSTree> tree = javaCodeAnalizerService.parse(sourceCode);
     assertTrue(tree.isPresent());
-    assertTrue(treeSitterUtils.isMainClass(tree.get(), sourceCode));
+    assertTrue(javaCodeAnalizerService.isMainClass(tree.get(), sourceCode));
   }
 
   @Test
   @DisplayName("isMainClass should return false for a class without a main method")
   void isMainClass_whenClassIsNotMain_shouldReturnFalse() {
     String sourceCode = "public class NotMain { }";
-    Optional<TSTree> tree = treeSitterUtils.parse(sourceCode);
+    Optional<TSTree> tree = javaCodeAnalizerService.parse(sourceCode);
     assertTrue(tree.isPresent());
-    assertFalse(treeSitterUtils.isMainClass(tree.get(), sourceCode));
+    assertFalse(javaCodeAnalizerService.isMainClass(tree.get(), sourceCode));
   }
 
   @Test
@@ -114,9 +116,9 @@ class TreeSitterUtilsTest {
           }
         }
         """;
-    Optional<TSTree> tree = treeSitterUtils.parse(sourceCode);
+    Optional<TSTree> tree = javaCodeAnalizerService.parse(sourceCode);
     assertTrue(tree.isPresent());
-    assertTrue(treeSitterUtils.isMainClass(tree.get(), sourceCode));
+    assertTrue(javaCodeAnalizerService.isMainClass(tree.get(), sourceCode));
   }
 
   @Test
@@ -129,9 +131,9 @@ class TreeSitterUtilsTest {
           }
         }
         """;
-    Optional<TSTree> tree = treeSitterUtils.parse(sourceCode);
+    Optional<TSTree> tree = javaCodeAnalizerService.parse(sourceCode);
     assertTrue(tree.isPresent());
-    assertTrue(treeSitterUtils.isMainClass(tree.get(), sourceCode));
+    assertTrue(javaCodeAnalizerService.isMainClass(tree.get(), sourceCode));
   }
 
   @Test
@@ -144,9 +146,9 @@ class TreeSitterUtilsTest {
           }
         }
         """;
-    Optional<TSTree> tree = treeSitterUtils.parse(sourceCode);
+    Optional<TSTree> tree = javaCodeAnalizerService.parse(sourceCode);
     assertTrue(tree.isPresent());
-    assertFalse(treeSitterUtils.isMainClass(tree.get(), sourceCode));
+    assertFalse(javaCodeAnalizerService.isMainClass(tree.get(), sourceCode));
   }
 
   @Test
@@ -159,9 +161,9 @@ class TreeSitterUtilsTest {
           }
         }
         """;
-    Optional<TSTree> tree = treeSitterUtils.parse(sourceCode);
+    Optional<TSTree> tree = javaCodeAnalizerService.parse(sourceCode);
     assertTrue(tree.isPresent());
-    assertFalse(treeSitterUtils.isMainClass(tree.get(), sourceCode));
+    assertFalse(javaCodeAnalizerService.isMainClass(tree.get(), sourceCode));
   }
 
   @Test
@@ -174,9 +176,9 @@ class TreeSitterUtilsTest {
           }
         }
         """;
-    Optional<TSTree> tree = treeSitterUtils.parse(sourceCode);
+    Optional<TSTree> tree = javaCodeAnalizerService.parse(sourceCode);
     assertTrue(tree.isPresent());
-    assertFalse(treeSitterUtils.isMainClass(tree.get(), sourceCode));
+    assertFalse(javaCodeAnalizerService.isMainClass(tree.get(), sourceCode));
   }
 
   @Test
@@ -190,9 +192,9 @@ class TreeSitterUtilsTest {
           }
         }
         """;
-    Optional<TSTree> tree = treeSitterUtils.parse(sourceCode);
+    Optional<TSTree> tree = javaCodeAnalizerService.parse(sourceCode);
     assertTrue(tree.isPresent());
-    assertFalse(treeSitterUtils.isMainClass(tree.get(), sourceCode));
+    assertFalse(javaCodeAnalizerService.isMainClass(tree.get(), sourceCode));
   }
 
   @Test
@@ -205,9 +207,9 @@ class TreeSitterUtilsTest {
           }
         }
         """;
-    Optional<TSTree> tree = treeSitterUtils.parse(sourceCode);
+    Optional<TSTree> tree = javaCodeAnalizerService.parse(sourceCode);
     assertTrue(tree.isPresent());
-    assertFalse(treeSitterUtils.isMainClass(tree.get(), sourceCode));
+    assertFalse(javaCodeAnalizerService.isMainClass(tree.get(), sourceCode));
   }
 
   @Test
@@ -220,9 +222,9 @@ class TreeSitterUtilsTest {
           }
         }
         """;
-    Optional<TSTree> tree = treeSitterUtils.parse(sourceCode);
+    Optional<TSTree> tree = javaCodeAnalizerService.parse(sourceCode);
     assertTrue(tree.isPresent());
-    assertTrue(treeSitterUtils.isMainClass(tree.get(), sourceCode));
+    assertTrue(javaCodeAnalizerService.isMainClass(tree.get(), sourceCode));
   }
 
   @Test
@@ -235,9 +237,9 @@ class TreeSitterUtilsTest {
           }
         }
         """;
-    Optional<TSTree> tree = treeSitterUtils.parse(sourceCode);
+    Optional<TSTree> tree = javaCodeAnalizerService.parse(sourceCode);
     assertTrue(tree.isPresent());
-    assertFalse(treeSitterUtils.isMainClass(tree.get(), sourceCode));
+    assertFalse(javaCodeAnalizerService.isMainClass(tree.get(), sourceCode));
   }
 
   @Test
@@ -250,9 +252,9 @@ class TreeSitterUtilsTest {
         class MyClass {
         }
         """;
-    Optional<TSTree> tree = treeSitterUtils.parse(sourceCode);
+    Optional<TSTree> tree = javaCodeAnalizerService.parse(sourceCode);
     assertTrue(tree.isPresent());
-    Optional<String> packageName = treeSitterUtils.getPackageName(tree.get(), sourceCode);
+    Optional<String> packageName = javaCodeAnalizerService.getPackageName(tree.get(), sourceCode);
     assertTrue(packageName.isPresent());
     assertEquals("com.example.myproject", packageName.get());
   }
@@ -265,9 +267,9 @@ class TreeSitterUtilsTest {
         class MyClass {
         }
         """;
-    Optional<TSTree> tree = treeSitterUtils.parse(sourceCode);
+    Optional<TSTree> tree = javaCodeAnalizerService.parse(sourceCode);
     assertTrue(tree.isPresent());
-    Optional<String> packageName = treeSitterUtils.getPackageName(tree.get(), sourceCode);
+    Optional<String> packageName = javaCodeAnalizerService.getPackageName(tree.get(), sourceCode);
     assertFalse(packageName.isPresent());
   }
 
@@ -279,7 +281,7 @@ class TreeSitterUtilsTest {
     try {
       tempFile = Files.createTempFile("test_source", ".java");
       Files.writeString(tempFile, expectedContent);
-      Optional<String> result = treeSitterUtils.getSourceCode(tempFile);
+      Optional<String> result = javaCodeAnalizerService.getSourceCode(tempFile);
       assertTrue(result.isPresent(), "Expected content for a valid file path");
       assertEquals(expectedContent, result.get());
     } finally {
@@ -293,7 +295,7 @@ class TreeSitterUtilsTest {
   @DisplayName("getSourceCode should return empty for a non-existent path")
   void getSourceCode_whenPathIsInvalid_shouldReturnEmpty() {
     Path nonExistentFile = Path.of("non_existent_file_12345.java");
-    Optional<String> result = treeSitterUtils.getSourceCode(nonExistentFile);
+    Optional<String> result = javaCodeAnalizerService.getSourceCode(nonExistentFile);
     assertFalse(result.isPresent(), "Expected empty for a non-existent file path");
   }
 }

@@ -1,16 +1,16 @@
-package io.github.syntaxpresso.core.command;
+package io.github.syntaxpresso.core.command.java;
 
-import io.github.syntaxpresso.core.command.dtos.CreateNewJavaFileResponse;
-import io.github.syntaxpresso.core.command.enums.JavaFileTemplate;
+import io.github.syntaxpresso.core.command.java.dto.CreateNewJavaFileResponse;
+import io.github.syntaxpresso.core.command.java.extra.JavaFileTemplate;
 import io.github.syntaxpresso.core.common.DataTransferObject;
-import io.github.syntaxpresso.core.util.TreeSitterUtils;
+import io.github.syntaxpresso.core.service.java.JavaCodeAnalizerService;
 import java.util.concurrent.Callable;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
-@Command(name = "create-new-java-file", description = "Create a new Java file")
+@Command(name = "create-new-file", description = "Create a new Java file")
 public class CreateNewJavaFileCommand implements Callable<Void> {
-  private final TreeSitterUtils treeSitterUtils = new TreeSitterUtils();
+  private final JavaCodeAnalizerService javaCodeAnalizerService = new JavaCodeAnalizerService();
 
   @Option(
       names = "--package-name",
@@ -31,7 +31,7 @@ public class CreateNewJavaFileCommand implements Callable<Void> {
   public Void call() throws Exception {
     String className = this.fileName.replace(".java", "");
     String template = this.fileType.getSourceContent(this.packageName, className);
-    Boolean isSourceCodeValid = this.treeSitterUtils.isSourceCodeValid(template);
+    Boolean isSourceCodeValid = this.javaCodeAnalizerService.isSourceCodeValid(template);
     if (isSourceCodeValid) {
       CreateNewJavaFileResponse payload = new CreateNewJavaFileResponse(template);
       System.out.println(DataTransferObject.success(payload));
