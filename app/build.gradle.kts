@@ -59,8 +59,6 @@ tasks.named<Test>("test") {
     }
 }
 
-// In your build.gradle.kts
-
 tasks.register<JavaExec>("generateNativeConfig") {
     group = "GraalVM Native"
     description = "Generates GraalVM native-image configuration using the agent."
