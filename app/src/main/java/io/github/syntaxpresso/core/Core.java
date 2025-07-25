@@ -5,8 +5,8 @@ import io.github.syntaxpresso.core.command.TestCommand;
 import picocli.CommandLine;
 
 @CommandLine.Command(subcommands = {CreateNewJavaFileCommand.class, TestCommand.class})
-public class Main {
+public class Core {
   public static void main(String[] args) {
-    System.exit(new CommandLine(new Main()).execute(args));
+    System.exit(new CommandLine(new Core()).execute(args));
   }
 }
