@@ -1,6 +1,6 @@
-package io.github.syntaxpresso.core.util;
+package io.github.syntaxpresso.core.service.java;
 
-import io.github.syntaxpresso.core.common.enums.SourceDirectoryType;
+import io.github.syntaxpresso.core.command.java.extra.SourceDirectoryType;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
-public class PathUtils {
+public class JavaProjectStructureService {
   private static final String SRC_MAIN_JAVA = "src/main/java";
   private static final String SRC_TEST_JAVA = "src/test/java";
 

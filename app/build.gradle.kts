@@ -63,7 +63,7 @@ tasks.register<JavaExec>("generateNativeConfig") {
     group = "GraalVM Native"
     description = "Generates GraalVM native-image configuration using the agent."
     if (gradle.startParameter.taskNames.contains("generateNativeConfig")) {
-        val nativeImageConfigDir = file("src/main/resources/META-INF/native-image")
+        val nativeImageConfigDir = file("app/src/main/resources/META-INF/native-image")
         doFirst {
             nativeImageConfigDir.mkdirs()
         }

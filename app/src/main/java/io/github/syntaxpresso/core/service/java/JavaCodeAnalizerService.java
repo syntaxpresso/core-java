@@ -1,4 +1,4 @@
-package io.github.syntaxpresso.core.util;
+package io.github.syntaxpresso.core.service.java;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -10,20 +10,16 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+
+import io.github.syntaxpresso.core.util.ParserFactory;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.treesitter.TSNode;
-import org.treesitter.TSParser;
-import org.treesitter.TSQuery;
-import org.treesitter.TSQueryCapture;
-import org.treesitter.TSQueryCursor;
-import org.treesitter.TSQueryMatch;
-import org.treesitter.TSTree;
+import org.treesitter.*;
 
 @NoArgsConstructor
 @Data
-public class TreeSitterUtils {
-  private final TSParser parser = JavaParser.get();
+public class JavaCodeAnalizerService {
+  private final TSParser parser = ParserFactory.get(new TreeSitterJava());
 
   public Optional<TSTree> parse(String sourceCode) {
     TSTree tree = this.parser.parseString(null, sourceCode);
