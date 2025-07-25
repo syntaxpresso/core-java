@@ -90,4 +90,20 @@ public class TreeSitterUtils {
     }
     return false;
   }
+
+  public Optional<String> getPackageName(TSTree tree, String sourceCode) {
+    String packageQuery = "(package_declaration (scoped_identifier) @package_name)";
+    TSQuery query = new TSQuery(this.parser.getLanguage(), packageQuery);
+    TSQueryCursor cursor = new TSQueryCursor();
+    cursor.exec(query, tree.getRootNode());
+    TSQueryMatch match = new TSQueryMatch();
+    if (cursor.nextMatch(match)) {
+      for (TSQueryCapture capture : match.getCaptures()) {
+        TSNode node = capture.getNode();
+        String packageName = sourceCode.substring(node.getStartByte(), node.getEndByte());
+        return Optional.of(packageName);
+      }
+    }
+    return Optional.empty();
+  }
 }
