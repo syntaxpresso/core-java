@@ -1,5 +1,6 @@
 package io.github.syntaxpresso.core.java.util;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -237,5 +238,62 @@ class TreeSitterUtilsTest {
     Optional<TSTree> tree = treeSitterUtils.parse(sourceCode);
     assertTrue(tree.isPresent());
     assertFalse(treeSitterUtils.isMainClass(tree.get(), sourceCode));
+  }
+
+  @Test
+  @DisplayName("getPackageName should return package name when declared")
+  void getPackageName_whenPackageIsDeclared_shouldReturnPackageName() {
+    String sourceCode =
+        """
+        package com.example.myproject;
+
+        class MyClass {
+        }
+        """;
+    Optional<TSTree> tree = treeSitterUtils.parse(sourceCode);
+    assertTrue(tree.isPresent());
+    Optional<String> packageName = treeSitterUtils.getPackageName(tree.get(), sourceCode);
+    assertTrue(packageName.isPresent());
+    assertEquals("com.example.myproject", packageName.get());
+  }
+
+  @Test
+  @DisplayName("getPackageName should return empty for default package")
+  void getPackageName_whenInDefaultPackage_shouldReturnEmpty() {
+    String sourceCode =
+        """
+        class MyClass {
+        }
+        """;
+    Optional<TSTree> tree = treeSitterUtils.parse(sourceCode);
+    assertTrue(tree.isPresent());
+    Optional<String> packageName = treeSitterUtils.getPackageName(tree.get(), sourceCode);
+    assertFalse(packageName.isPresent());
+  }
+
+  @Test
+  @DisplayName("getSourceCode should return file content for a valid path")
+  void getSourceCode_whenPathIsValid_shouldReturnContent() throws IOException {
+    String expectedContent = "public class MyTestFile { }";
+    Path tempFile = null;
+    try {
+      tempFile = Files.createTempFile("test_source", ".java");
+      Files.writeString(tempFile, expectedContent);
+      Optional<String> result = treeSitterUtils.getSourceCode(tempFile);
+      assertTrue(result.isPresent(), "Expected content for a valid file path");
+      assertEquals(expectedContent, result.get());
+    } finally {
+      if (tempFile != null) {
+        Files.deleteIfExists(tempFile);
+      }
+    }
+  }
+
+  @Test
+  @DisplayName("getSourceCode should return empty for a non-existent path")
+  void getSourceCode_whenPathIsInvalid_shouldReturnEmpty() {
+    Path nonExistentFile = Path.of("non_existent_file_12345.java");
+    Optional<String> result = treeSitterUtils.getSourceCode(nonExistentFile);
+    assertFalse(result.isPresent(), "Expected empty for a non-existent file path");
   }
 }
