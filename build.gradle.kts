@@ -1,6 +1,7 @@
 plugins {
     application
     id("org.graalvm.buildtools.native") version "0.10.6"
+    id("com.github.johnrengelman.shadow") version "8.1.1"
 }
 
 repositories {
@@ -57,4 +58,30 @@ graalvmNative {
         }
     }
     toolchainDetection.set(true)
+}
+
+tasks.register<JavaExec>("generateNativeConfig") {
+    group = "GraalVM Native"
+    description = "Generates GraalVM native-image configuration using the agent."
+    val nativeImageConfigDir = file("src/main/resources/META-INF/native-image")
+    doFirst {
+        nativeImageConfigDir.mkdirs()
+    }
+    classpath(
+        tasks.shadowJar
+            .get()
+            .outputs.files,
+    )
+    mainClass.set(application.mainClass)
+    jvmArgs(
+        "-agentlib:native-image-agent=config-output-dir=${nativeImageConfigDir.absolutePath}",
+    )
+    if (project.hasProperty("appArgs")) {
+        val appArgs = (project.property("appArgs") as String).split(" ")
+        args(appArgs)
+    } else {
+        throw GradleException(
+            "Missing required project property 'appArgs'.\nUsage: ./gradlew generateNativeConfig -PappArgs=\"<your arguments>\"",
+        )
+    }
 }
