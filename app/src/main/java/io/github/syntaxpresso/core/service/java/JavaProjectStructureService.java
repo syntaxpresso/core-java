@@ -1,10 +1,14 @@
 package io.github.syntaxpresso.core.service.java;
 
 import io.github.syntaxpresso.core.command.java.extra.SourceDirectoryType;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -62,5 +66,16 @@ public class JavaProjectStructureService {
             return Optional.empty();
           }
         });
+  }
+
+  public List<File> findFilesByExtension(File cwd, String extension) throws IOException {
+    Path rootDir = cwd.toPath();
+    try (Stream<Path> stream = Files.walk(rootDir)) {
+      return stream
+          .filter(Files::isRegularFile)
+          .filter(path -> path.toString().endsWith("." + extension))
+          .map(Path::toFile) // Convert Path to File
+          .collect(Collectors.toList());
+    }
   }
 }
