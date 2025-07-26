@@ -3,14 +3,16 @@ package io.github.syntaxpresso.core.command.java;
 import io.github.syntaxpresso.core.command.java.dto.CreateNewJavaFileResponse;
 import io.github.syntaxpresso.core.command.java.extra.JavaFileTemplate;
 import io.github.syntaxpresso.core.common.DataTransferObject;
-import io.github.syntaxpresso.core.service.java.JavaCodeAnalizerService;
+import io.github.syntaxpresso.core.service.JavaService;
 import java.util.concurrent.Callable;
+import lombok.RequiredArgsConstructor;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
+@RequiredArgsConstructor
 @Command(name = "create-new-file", description = "Create a new Java file")
 public class CreateNewJavaFileCommand implements Callable<Void> {
-  private final JavaCodeAnalizerService javaCodeAnalizerService = new JavaCodeAnalizerService();
+  private final JavaService javaService;
 
   @Option(
       names = "--package-name",
@@ -31,7 +33,7 @@ public class CreateNewJavaFileCommand implements Callable<Void> {
   public Void call() throws Exception {
     String className = this.fileName.replace(".java", "");
     String template = this.fileType.getSourceContent(this.packageName, className);
-    Boolean isSourceCodeValid = this.javaCodeAnalizerService.isSourceCodeValid(template);
+    boolean isSourceCodeValid = this.javaService.getTsHelper().isSourceCodeValid(template);
     if (isSourceCodeValid) {
       CreateNewJavaFileResponse payload = new CreateNewJavaFileResponse(template);
       System.out.println(DataTransferObject.success(payload));
