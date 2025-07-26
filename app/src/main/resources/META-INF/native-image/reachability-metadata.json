@@ -58,6 +58,11 @@
       ]
     },
     {
+      "type": "io.github.syntaxpresso.core.command.java.dto.GetMainClassResponse",
+      "allDeclaredFields": true,
+      "allDeclaredMethods": true
+    },
+    {
       "type": "io.github.syntaxpresso.core.common.DataTransferObject",
       "allDeclaredFields": true,
       "methods": [
