@@ -1,13 +1,14 @@
 package io.github.syntaxpresso.core.util;
 
+import io.github.syntaxpresso.core.common.ParserFactory;
 import java.io.File;
 import java.util.Optional;
-
-import io.github.syntaxpresso.core.common.ParserFactory;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.treesitter.TSLanguage;
+import org.treesitter.TSNode;
 import org.treesitter.TSParser;
+import org.treesitter.TSPoint;
 import org.treesitter.TSTree;
 
 @AllArgsConstructor
@@ -44,5 +45,29 @@ public class TSHelper {
 
   public boolean isSourceCodeValid(String sourceCode) {
     return this.parse(sourceCode).isPresent();
+  }
+
+  public Optional<TSNode> getNodeAtPosition(TSTree tree, int line, int column) {
+    if (tree == null) {
+      return Optional.empty();
+    }
+    TSNode rootNode = tree.getRootNode();
+    TSPoint point = new TSPoint(line - 1, column - 1);
+    TSNode node = rootNode.getNamedDescendantForPointRange(point, point);
+    return Optional.ofNullable(node);
+  }
+
+  public Optional<TSNode> getNodeAtPosition(File file, int line, int column) {
+    Optional<TSTree> tree = this.parse(file);
+    return tree.flatMap(tsTree -> this.getNodeAtPosition(tsTree, line, column));
+  }
+
+  public boolean renameNode(File file, TSNode node, String newName) {
+    if (file == null || node == null || newName == null) {
+      return false;
+    }
+    int start = node.getStartByte();
+    int end = node.getEndByte();
+    return this.pathHelper.replaceTextInFile(file, start, end, newName);
   }
 }
