@@ -33,6 +33,15 @@ public class PathHelper {
     return this.getFileSourceCode(convertedFilePath);
   }
 
+  public boolean createFile(File file, String sourceCode) throws IOException {
+    try {
+      Files.writeString(file.toPath(), sourceCode, StandardCharsets.UTF_8);
+      return true;
+    } catch (IOException e) {
+      return false;
+    }
+  }
+
   public List<File> findFiles(File cwd, String extension) throws IOException {
     Path rootDir = cwd.toPath();
     try (Stream<Path> stream = Files.walk(rootDir)) {
