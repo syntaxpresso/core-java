@@ -190,4 +190,44 @@ class TSHelperTest {
       assertFalse(node.isPresent());
     }
   }
+
+  @Nested
+  @DisplayName("renameNode()")
+  class RenameNodeTests {
+    @Test
+    @DisplayName("should correctly rename a node in a file")
+    void renameNode_shouldSucceed(@TempDir Path tempDir) throws IOException {
+      File file = tempDir.resolve("MyClass.java").toFile();
+      String initialContent = "public class MyClass {}";
+      Files.writeString(file.toPath(), initialContent);
+      Optional<TSNode> nodeToRename = tsHelper.getNodeAtPosition(file, 1, 15);
+      assertTrue(nodeToRename.isPresent());
+      assertEquals("identifier", nodeToRename.get().getType());
+      boolean result = tsHelper.renameNode(file, nodeToRename.get(), "NewClassName");
+      assertTrue(result, "renameNode should return true on success");
+      String newContent = Files.readString(file.toPath());
+      assertEquals("public class NewClassName {}", newContent);
+    }
+
+    @Test
+    @DisplayName("should return false for a non-existent file")
+    void renameNode_withInvalidFile_shouldReturnFalse() {
+      String sourceCode = "class MyClass {}";
+      Optional<TSNode> node =
+          tsHelper.parse(sourceCode).flatMap(tree -> tsHelper.getNodeAtPosition(tree, 1, 7));
+      assertTrue(node.isPresent());
+      File nonExistentFile = new File("non_existent_file.java");
+      boolean result = tsHelper.renameNode(nonExistentFile, node.get(), "NewName");
+      assertFalse(result, "renameNode should return false for a non-existent file");
+    }
+
+    @Test
+    @DisplayName("should return false for a null node")
+    void renameNode_withNullNode_shouldReturnFalse(@TempDir Path tempDir) throws IOException {
+      File file = tempDir.resolve("MyClass.java").toFile();
+      Files.writeString(file.toPath(), "public class MyClass {}");
+      boolean result = tsHelper.renameNode(file, null, "NewName");
+      assertFalse(result, "renameNode should return false for a null node");
+    }
+  }
 }
