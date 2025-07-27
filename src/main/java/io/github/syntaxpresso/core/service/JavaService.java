@@ -1,6 +1,7 @@
 package io.github.syntaxpresso.core.service;
 
 import io.github.syntaxpresso.core.command.java.extra.SourceDirectoryType;
+import io.github.syntaxpresso.core.service.extra.ScopeType;
 import io.github.syntaxpresso.core.util.PathHelper;
 import io.github.syntaxpresso.core.util.TSHelper;
 import java.io.File;
@@ -121,38 +122,49 @@ public class JavaService {
       return Optional.empty();
     }
     String sourceCode = sourceCodeOpt.get();
+
     Optional<TSTree> treeOpt = this.tsHelper.parse(sourceCode);
     if (treeOpt.isEmpty()) {
       return Optional.empty();
     }
     TSTree tree = treeOpt.get();
+
     Optional<TSNode> startingNodeOpt = this.tsHelper.getNodeAtPosition(tree, line, column);
     if (startingNodeOpt.isEmpty()) {
       return Optional.empty();
     }
+
     TSNode startingNode = startingNodeOpt.get();
     String symbolName =
         sourceCode.substring(startingNode.getStartByte(), startingNode.getEndByte());
+
     String declarationQuery =
         """
         [
           (local_variable_declaration
             declarator: (variable_declarator
               name: (identifier) @name)) @declaration
+
           (formal_parameter
             name: (identifier) @name) @declaration
+
           (field_declaration
             declarator: (variable_declarator
               name: (identifier) @name)) @declaration
+
+          (class_declaration
+              name: (identifier) @name) @declaration
         ]
         """;
     TSQuery query = new TSQuery(this.tsHelper.getParser().getLanguage(), declarationQuery);
     TSQueryCursor cursor = new TSQueryCursor();
+
     TSNode scopeNode = startingNode;
     while (scopeNode != null) {
       cursor.exec(query, scopeNode);
       TSQueryMatch match = new TSQueryMatch();
       TSNode bestCandidate = null;
+
       while (cursor.nextMatch(match)) {
         TSNode declarationCandidate = null;
         TSNode nameCandidate = null;
@@ -164,6 +176,7 @@ public class JavaService {
             nameCandidate = capture.getNode();
           }
         }
+
         if (nameCandidate != null && declarationCandidate != null) {
           String capturedName =
               sourceCode.substring(nameCandidate.getStartByte(), nameCandidate.getEndByte());
@@ -184,6 +197,42 @@ public class JavaService {
         return Optional.of(bestCandidate);
       }
       scopeNode = scopeNode.getParent();
+    }
+    return Optional.empty();
+  }
+
+  public Optional<ScopeType> getNodeScope(TSNode node) {
+    if (node == null) {
+      return Optional.empty();
+    }
+    String nodeType = node.getType();
+    if ("local_variable_declaration".equals(nodeType) || "formal_parameter".equals(nodeType)) {
+      return Optional.of(ScopeType.LOCAL);
+    }
+    boolean isPublic = false;
+    for (int i = 0; i < node.getChildCount(); i++) {
+      TSNode child = node.getChild(i);
+      if ("modifiers".equals(child.getType())) {
+        for (int j = 0; j < child.getChildCount(); j++) {
+          if ("public".equals(child.getChild(j).getType())) {
+            isPublic = true;
+            break;
+          }
+        }
+      }
+      if (isPublic) {
+        break;
+      }
+    }
+    if ("class_declaration".equals(nodeType)
+        || "interface_declaration".equals(nodeType)
+        || "enum_declaration".equals(nodeType)
+        || "record_declaration".equals(nodeType)
+        || "annotation_type_declaration".equals(nodeType)) {
+      return isPublic ? Optional.of(ScopeType.PROJECT) : Optional.of(ScopeType.CLASS);
+    }
+    if ("field_declaration".equals(nodeType) || "method_declaration".equals(nodeType)) {
+      return isPublic ? Optional.of(ScopeType.PROJECT) : Optional.of(ScopeType.CLASS);
     }
     return Optional.empty();
   }
