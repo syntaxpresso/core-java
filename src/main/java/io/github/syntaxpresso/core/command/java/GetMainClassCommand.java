@@ -23,7 +23,7 @@ public class GetMainClassCommand implements Callable<Void> {
   @Override
   public Void call() throws Exception {
     GetMainClassResponse response = new GetMainClassResponse();
-    List<File> allFiles = this.javaService.getPathHelper().findFiles(this.cwd, "java");
+    List<File> allFiles = this.javaService.getPathHelper().findFilesByExtention(this.cwd, "java");
     for (File file : allFiles) {
       Optional<TSTree> tree = this.javaService.getTsHelper().parse(file);
       if (tree.isEmpty()) {
