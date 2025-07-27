@@ -53,7 +53,12 @@ public class TSHelper {
     }
     TSNode rootNode = tree.getRootNode();
     TSPoint point = new TSPoint(line - 1, column - 1);
-    TSNode node = rootNode.getNamedDescendantForPointRange(point, point); // This line is correct
+    TSNode node = rootNode.getNamedDescendantForPointRange(point, point);
     return Optional.ofNullable(node);
+  }
+
+  public Optional<TSNode> getNodeAtPosition(File file, int line, int column) {
+    Optional<TSTree> tree = this.parse(file);
+    return tree.flatMap(tsTree -> this.getNodeAtPosition(tsTree, line, column));
   }
 }

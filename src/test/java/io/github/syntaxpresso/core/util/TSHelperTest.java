@@ -186,7 +186,7 @@ class TSHelperTest {
     @Test
     @DisplayName("should return empty when tree is null")
     void getNodeAtPosition_whenTreeIsNull_shouldReturnEmpty() {
-      Optional<TSNode> node = tsHelper.getNodeAtPosition(null, 1, 1);
+      Optional<TSNode> node = tsHelper.getNodeAtPosition((TSTree) null, 1, 1);
       assertFalse(node.isPresent());
     }
   }
