@@ -13,7 +13,7 @@ public enum JavaFileTemplate {
     this.template = template;
   }
 
-  public String getSourceContent(String packageName, String fileName) {
-    return String.format(this.template, packageName, fileName);
+  public String getSourceContent(String packageName, String className) {
+    return String.format(this.template, packageName, className);
   }
 }
