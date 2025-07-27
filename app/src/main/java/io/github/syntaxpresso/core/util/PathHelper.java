@@ -53,14 +53,26 @@ public class PathHelper {
     }
   }
 
-  public Optional<Path> findDirectory(Path rootDir, String dirName) {
-    if (rootDir == null || dirName == null) {
+  public Optional<File> findDirectoryRecursively(File rootDir, String dirName) {
+    if (rootDir == null || !rootDir.isDirectory() || dirName == null) {
       return Optional.empty();
     }
-    Path potentialDir = rootDir.resolve(dirName);
-    if (Files.isDirectory(potentialDir)) {
-      return Optional.of(potentialDir);
+    Path rootPath = rootDir.toPath();
+    try (Stream<Path> stream = Files.walk(rootPath)) {
+      Optional<Path> foundPathOptional =
+          stream
+              .filter(Files::isDirectory)
+              .filter(path -> path.toString().endsWith(dirName))
+              .findFirst();
+      if (foundPathOptional.isPresent()) {
+        Path foundPath = foundPathOptional.get();
+        return Optional.of(foundPath.toFile());
+      } else {
+        return Optional.empty();
+      }
+    } catch (IOException e) {
+      e.printStackTrace();
+      return Optional.empty();
     }
-    return Optional.empty();
   }
 }
