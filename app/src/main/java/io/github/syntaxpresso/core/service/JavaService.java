@@ -3,7 +3,7 @@ package io.github.syntaxpresso.core.service;
 import io.github.syntaxpresso.core.command.java.extra.SourceDirectoryType;
 import io.github.syntaxpresso.core.util.PathHelper;
 import io.github.syntaxpresso.core.util.TSHelper;
-import java.io.IOException;
+import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -29,36 +29,34 @@ public class JavaService {
   private static final String SRC_MAIN_JAVA = "src/main/java";
   private static final String SRC_TEST_JAVA = "src/test/java";
 
-  public boolean isJavaProject(Path rootDir) {
-    if (rootDir == null || !Files.isDirectory(rootDir)) {
+  public boolean isJavaProject(File rootDir) {
+    if (rootDir == null || !rootDir.isDirectory()) {
       return false;
     }
-    return Files.exists(rootDir.resolve("build.gradle"))
-        || Files.exists(rootDir.resolve("build.gradle.kts"))
-        || Files.exists(rootDir.resolve("pom.xml"))
-        || Files.isDirectory(rootDir.resolve("src/main/java"));
+    return Files.exists(rootDir.toPath().resolve("build.gradle"))
+        || Files.exists(rootDir.toPath().resolve("build.gradle.kts"))
+        || Files.exists(rootDir.toPath().resolve("pom.xml"))
+        || Files.isDirectory(rootDir.toPath().resolve("src/main/java"));
   }
 
-  public Optional<Path> findAbsolutePackagePath(
-      Path rootDir, String packageName, SourceDirectoryType sourceDirectoryType) {
+  public Optional<File> findFilePath(
+      File rootDir, String packageName, SourceDirectoryType sourceDirectoryType) {
     if (rootDir == null || packageName == null || sourceDirectoryType == null) {
       return Optional.empty();
     }
-    String packageAsPath = packageName.replace('.', '/');
-    Optional<Path> sourceDirOptional =
+    Path packageAsPath = Path.of(packageName.replace('.', '/'));
+    Optional<File> sourceDirOptional =
         (sourceDirectoryType == SourceDirectoryType.MAIN)
-            ? this.pathHelper.findDirectory(rootDir, SRC_MAIN_JAVA)
-            : this.pathHelper.findDirectory(rootDir, SRC_TEST_JAVA);
-    return sourceDirOptional.flatMap(
-        sourceDir -> {
-          Path fullPackagePath = sourceDir.resolve(packageAsPath);
-          try {
-            Files.createDirectories(fullPackagePath);
-            return Optional.of(fullPackagePath);
-          } catch (IOException e) {
-            return Optional.empty();
-          }
-        });
+            ? this.pathHelper.findDirectoryRecursively(rootDir, SRC_MAIN_JAVA)
+            : this.pathHelper.findDirectoryRecursively(rootDir, SRC_TEST_JAVA);
+    if (sourceDirOptional.isEmpty()) {
+      return Optional.empty();
+    }
+    File fullPackageDir = sourceDirOptional.get().toPath().resolve(packageAsPath).toFile();
+    if (fullPackageDir.exists() || fullPackageDir.mkdirs()) {
+      return Optional.of(fullPackageDir);
+    }
+    return Optional.empty();
   }
 
   public Boolean isMainClass(TSTree tree, String sourceCode) {
