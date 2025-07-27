@@ -292,10 +292,14 @@ class JavaServiceTest {
           """
           public class ClassA {           // line 1
             private int privateField = 1; // line 2
-            public void publicMethod() {  // line 3
-              int localVar = 0;         // line 4
-              localVar++;                 // line 5
-              privateField++;             // line 6
+            private String unusedField;     // line 3
+            private int count = 100;      // line 4
+            public void publicMethod() {  // line 5
+              int localVar = 0;         // line 6
+              int count = 0;              // line 7 (shadows field)
+              localVar++;                 // line 8
+              privateField++;             // line 9
+              count++;                    // line 10 (local count)
             }
           }
           """;
@@ -316,7 +320,7 @@ class JavaServiceTest {
     @Test
     @DisplayName("should find usages of a local variable only within its method")
     void findUsages_forLocalVariable_shouldReturnLocalUsages() {
-      Optional<TSNode> declarationNode = javaService.findDeclarationNode(classAFile, 4, 11);
+      Optional<TSNode> declarationNode = javaService.findDeclarationNode(classAFile, 6, 11);
       assertTrue(declarationNode.isPresent());
       assertEquals("local_variable_declaration", declarationNode.get().getType());
       List<TSNode> usages = javaService.findUsages(classAFile, declarationNode.get(), projectDir);
@@ -339,11 +343,31 @@ class JavaServiceTest {
     @Test
     @DisplayName("should find usages of a public method across the project")
     void findUsages_forPublicMethod_shouldReturnProjectUsages() {
-      Optional<TSNode> declarationNode = javaService.findDeclarationNode(classAFile, 3, 19);
+      Optional<TSNode> declarationNode = javaService.findDeclarationNode(classAFile, 5, 19);
       assertTrue(declarationNode.isPresent());
       assertEquals("method_declaration", declarationNode.get().getType());
       List<TSNode> usages = javaService.findUsages(classAFile, declarationNode.get(), projectDir);
       assertEquals(3, usages.size());
+    }
+
+    @Test
+    @DisplayName("should return only declaration when no usages exist")
+    void findUsages_forUnusedSymbol_shouldReturnOnlyDeclaration() {
+      Optional<TSNode> declarationNode = javaService.findDeclarationNode(classAFile, 3, 22);
+      assertTrue(declarationNode.isPresent());
+      assertEquals("field_declaration", declarationNode.get().getType());
+      List<TSNode> usages = javaService.findUsages(classAFile, declarationNode.get(), projectDir);
+      assertEquals(1, usages.size());
+    }
+
+    @Test
+    @DisplayName("should not find usages of a shadowed field")
+    void findUsages_forShadowedVariable_shouldNotIncludeShadowed() {
+      Optional<TSNode> declarationNode = javaService.findDeclarationNode(classAFile, 7, 11);
+      assertTrue(declarationNode.isPresent());
+      assertEquals("local_variable_declaration", declarationNode.get().getType());
+      List<TSNode> usages = javaService.findUsages(classAFile, declarationNode.get(), projectDir);
+      assertEquals(2, usages.size());
     }
   }
 }
