@@ -114,4 +114,77 @@ public class JavaService {
     }
     return Optional.empty();
   }
+
+  public Optional<TSNode> findDeclarationNode(File file, int line, int column) {
+    Optional<String> sourceCodeOpt = this.pathHelper.getFileSourceCode(file);
+    if (sourceCodeOpt.isEmpty()) {
+      return Optional.empty();
+    }
+    String sourceCode = sourceCodeOpt.get();
+    Optional<TSTree> treeOpt = this.tsHelper.parse(sourceCode);
+    if (treeOpt.isEmpty()) {
+      return Optional.empty();
+    }
+    TSTree tree = treeOpt.get();
+    Optional<TSNode> startingNodeOpt = this.tsHelper.getNodeAtPosition(tree, line, column);
+    if (startingNodeOpt.isEmpty()) {
+      return Optional.empty();
+    }
+    TSNode startingNode = startingNodeOpt.get();
+    String symbolName =
+        sourceCode.substring(startingNode.getStartByte(), startingNode.getEndByte());
+    String declarationQuery =
+        """
+        [
+          (local_variable_declaration
+            declarator: (variable_declarator
+              name: (identifier) @name)) @declaration
+          (formal_parameter
+            name: (identifier) @name) @declaration
+          (field_declaration
+            declarator: (variable_declarator
+              name: (identifier) @name)) @declaration
+        ]
+        """;
+    TSQuery query = new TSQuery(this.tsHelper.getParser().getLanguage(), declarationQuery);
+    TSQueryCursor cursor = new TSQueryCursor();
+    TSNode scopeNode = startingNode;
+    while (scopeNode != null) {
+      cursor.exec(query, scopeNode);
+      TSQueryMatch match = new TSQueryMatch();
+      TSNode bestCandidate = null;
+      while (cursor.nextMatch(match)) {
+        TSNode declarationCandidate = null;
+        TSNode nameCandidate = null;
+        for (TSQueryCapture capture : match.getCaptures()) {
+          String captureName = query.getCaptureNameForId(capture.getIndex());
+          if ("declaration".equals(captureName)) {
+            declarationCandidate = capture.getNode();
+          } else if ("name".equals(captureName)) {
+            nameCandidate = capture.getNode();
+          }
+        }
+        if (nameCandidate != null && declarationCandidate != null) {
+          String capturedName =
+              sourceCode.substring(nameCandidate.getStartByte(), nameCandidate.getEndByte());
+          if (capturedName.equals(symbolName)) {
+            if (bestCandidate == null
+                || declarationCandidate.getStartByte() > bestCandidate.getStartByte()) {
+              if (startingNode.equals(nameCandidate)) {
+                return Optional.of(declarationCandidate);
+              }
+              if (declarationCandidate.getStartByte() < startingNode.getStartByte()) {
+                bestCandidate = declarationCandidate;
+              }
+            }
+          }
+        }
+      }
+      if (bestCandidate != null) {
+        return Optional.of(bestCandidate);
+      }
+      scopeNode = scopeNode.getParent();
+    }
+    return Optional.empty();
+  }
 }
