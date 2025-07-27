@@ -97,4 +97,12 @@ public class PathHelper {
     }
   }
 
+  public boolean renameDirectory(File source, File destination) {
+    try {
+      Files.move(source.toPath(), destination.toPath(), StandardCopyOption.REPLACE_EXISTING);
+      return true;
+    } catch (IOException e) {
+      return false;
+    }
+  }
 }
