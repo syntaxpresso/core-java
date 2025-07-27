@@ -2,6 +2,7 @@ package io.github.syntaxpresso.core.common;
 
 import io.github.syntaxpresso.core.command.java.CreateNewFileCommand;
 import io.github.syntaxpresso.core.command.java.GetMainClassCommand;
+import io.github.syntaxpresso.core.command.java.RenameCommand;
 import io.github.syntaxpresso.core.service.JavaService;
 import io.github.syntaxpresso.core.util.PathHelper;
 import io.github.syntaxpresso.core.util.TSHelper;
@@ -21,6 +22,9 @@ public class CommandFactory implements IFactory {
     }
     if (cls == GetMainClassCommand.class) {
       return (K) new GetMainClassCommand(javaService);
+    }
+    if (cls == RenameCommand.class) {
+      return (K) new RenameCommand(javaService);
     }
     return cls.getDeclaredConstructor().newInstance();
   }
