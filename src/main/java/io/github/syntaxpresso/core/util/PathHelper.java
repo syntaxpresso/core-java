@@ -75,4 +75,16 @@ public class PathHelper {
       return Optional.empty();
     }
   }
+
+  public boolean replaceTextInFile(File file, int start, int end, String newText) {
+    try {
+      String content = Files.readString(file.toPath(), StandardCharsets.UTF_8);
+      String newContent = new StringBuilder(content).replace(start, end, newText).toString();
+      Files.writeString(file.toPath(), newContent, StandardCharsets.UTF_8);
+      return true;
+    } catch (IOException e) {
+      return false;
+    }
+  }
+
 }
