@@ -1,6 +1,7 @@
 package io.github.syntaxpresso.core.command.java;
 
 import com.google.common.io.Files;
+import io.github.syntaxpresso.core.command.java.dto.CreateNewJavaFileResponse;
 import io.github.syntaxpresso.core.command.java.extra.JavaFileTemplate;
 import io.github.syntaxpresso.core.command.java.extra.SourceDirectoryType;
 import io.github.syntaxpresso.core.common.DataTransferObject;
@@ -58,7 +59,9 @@ public class CreateNewJavaFileCommand implements Callable<Void> {
       File fileToCreate = filePath.get().toPath().resolve(className.concat(".java")).toFile();
       Boolean fileCreated = this.javaService.getPathHelper().createFile(fileToCreate, template);
       if (fileCreated) {
-        System.out.println(DataTransferObject.success());
+        CreateNewJavaFileResponse response =
+            CreateNewJavaFileResponse.builder().filePath(fileToCreate.getAbsolutePath()).build();
+        System.out.println(DataTransferObject.success(response));
         return null;
       }
       System.out.println(DataTransferObject.error("Unable to create file."));
