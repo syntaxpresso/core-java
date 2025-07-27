@@ -2,6 +2,8 @@ package io.github.syntaxpresso.core.util;
 
 import java.io.File;
 import java.util.Optional;
+
+import io.github.syntaxpresso.core.common.ParserFactory;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.treesitter.TSLanguage;

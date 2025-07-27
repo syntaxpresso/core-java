@@ -1,6 +1,6 @@
 package io.github.syntaxpresso.core;
 
-import io.github.syntaxpresso.core.util.CommandFactory;
+import io.github.syntaxpresso.core.common.CommandFactory;
 import io.github.syntaxpresso.core.command.GenericCommand;
 import io.github.syntaxpresso.core.command.JavaCommand;
 import picocli.CommandLine;

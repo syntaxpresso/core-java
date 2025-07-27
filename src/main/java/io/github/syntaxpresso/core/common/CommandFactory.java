@@ -1,8 +1,10 @@
-package io.github.syntaxpresso.core.util;
+package io.github.syntaxpresso.core.common;
 
 import io.github.syntaxpresso.core.command.java.CreateNewJavaFileCommand;
 import io.github.syntaxpresso.core.command.java.GetMainClassCommand;
 import io.github.syntaxpresso.core.service.JavaService;
+import io.github.syntaxpresso.core.util.PathHelper;
+import io.github.syntaxpresso.core.util.TSHelper;
 import org.treesitter.TreeSitterJava;
 import picocli.CommandLine.IFactory;
 

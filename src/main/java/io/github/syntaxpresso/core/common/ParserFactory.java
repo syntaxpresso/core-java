@@ -1,4 +1,4 @@
-package io.github.syntaxpresso.core.util;
+package io.github.syntaxpresso.core.common;
 
 import java.util.HashMap;
 import java.util.Map;
