@@ -74,7 +74,7 @@ class PathHelperTest {
     Path subDir = tempDir.resolve("subdir");
     Files.createDirectory(subDir);
     Files.createFile(subDir.resolve("test3.java"));
-    List<File> javaFiles = this.pathHelper.findFiles(tempDir.toFile(), "java");
+    List<File> javaFiles = this.pathHelper.findFilesByExtention(tempDir.toFile(), "java");
     assertEquals(3, javaFiles.size());
     assertTrue(javaFiles.stream().allMatch(f -> f.getName().endsWith(".java")));
   }
@@ -83,7 +83,7 @@ class PathHelperTest {
   @DisplayName("findFiles should return empty list when no files match")
   void findFiles_whenNoMatches_shouldReturnEmptyList(@TempDir File tempDir) throws IOException {
     Files.createFile(tempDir.toPath().resolve("test.txt"));
-    List<File> javaFiles = this.pathHelper.findFiles(tempDir, "java");
+    List<File> javaFiles = this.pathHelper.findFilesByExtention(tempDir, "java");
     assertTrue(javaFiles.isEmpty());
   }
 

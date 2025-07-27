@@ -42,7 +42,7 @@ public class PathHelper {
     }
   }
 
-  public List<File> findFiles(File cwd, String extension) throws IOException {
+  public List<File> findFilesByExtention(File cwd, String extension) throws IOException {
     Path rootDir = cwd.toPath();
     try (Stream<Path> stream = Files.walk(rootDir)) {
       return stream
