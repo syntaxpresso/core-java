@@ -15,7 +15,7 @@ import picocli.CommandLine.Option;
 
 @RequiredArgsConstructor
 @Command(name = "create-new-file", description = "Create a new Java file")
-public class CreateNewJavaFileCommand implements Callable<Void> {
+public class CreateNewFileCommand implements Callable<Void> {
   private final JavaService javaService;
 
   @Option(names = "--cwd", description = "Current Working Directory", required = true)
