@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.github.syntaxpresso.core.service.extra.ScopeType;
 import io.github.syntaxpresso.core.util.PathHelper;
 import io.github.syntaxpresso.core.util.TSHelper;
 import java.io.File;
@@ -193,6 +194,83 @@ class JavaServiceTest {
       File nonExistentFile = new File("non_existent_file.java");
       Optional<TSNode> declarationNode = javaService.findDeclarationNode(nonExistentFile, 1, 1);
       assertFalse(declarationNode.isPresent());
+    }
+  }
+
+  @Nested
+  @DisplayName("getNodeScope()")
+  class GetNodeScopeTests {
+    private File tempFile;
+
+    @BeforeEach
+    void setup(@TempDir Path tempDir) throws IOException {
+      tempFile = tempDir.resolve("MyClass.java").toFile();
+      String sourceCode =
+          """
+          package com.example;
+
+          public class MyClass { // line 3
+            private String myField; // line 4
+            public int publicField; // line 5
+
+            void myMethod(String param) { // line 7
+              int myVar = 10; // line 8
+            }
+
+            public void myPublicMethod() {} // line 11
+          }
+          """;
+      Files.writeString(tempFile.toPath(), sourceCode);
+    }
+
+    @Test
+    @DisplayName("should identify LOCAL scope for a local variable")
+    void getNodeScope_forLocalVariable_shouldReturnLocal() {
+      Optional<TSNode> declarationNode = javaService.findDeclarationNode(tempFile, 8, 11);
+      assertTrue(declarationNode.isPresent());
+      Optional<ScopeType> scope = javaService.getNodeScope(declarationNode.get());
+      assertTrue(scope.isPresent());
+      assertEquals(ScopeType.LOCAL, scope.get());
+    }
+
+    @Test
+    @DisplayName("should identify LOCAL scope for a method parameter")
+    void getNodeScope_forMethodParameter_shouldReturnLocal() {
+      Optional<TSNode> declarationNode = javaService.findDeclarationNode(tempFile, 7, 26);
+      assertTrue(declarationNode.isPresent());
+      Optional<ScopeType> scope = javaService.getNodeScope(declarationNode.get());
+      assertTrue(scope.isPresent());
+      assertEquals(ScopeType.LOCAL, scope.get());
+    }
+
+    @Test
+    @DisplayName("should identify CLASS scope for a private field")
+    void getNodeScope_forPrivateField_shouldReturnClass() {
+      Optional<TSNode> declarationNode = javaService.findDeclarationNode(tempFile, 4, 20);
+      assertTrue(declarationNode.isPresent());
+      Optional<ScopeType> scope = javaService.getNodeScope(declarationNode.get());
+      assertTrue(scope.isPresent());
+      assertEquals(ScopeType.CLASS, scope.get());
+    }
+
+    @Test
+    @DisplayName("should identify PROJECT scope for a public field")
+    void getNodeScope_forPublicField_shouldReturnProject() {
+      Optional<TSNode> declarationNode = javaService.findDeclarationNode(tempFile, 5, 22);
+      assertTrue(declarationNode.isPresent());
+      Optional<ScopeType> scope = javaService.getNodeScope(declarationNode.get());
+      assertTrue(scope.isPresent());
+      assertEquals(ScopeType.PROJECT, scope.get());
+    }
+
+    @Test
+    @DisplayName("should identify PROJECT scope for a public class")
+    void getNodeScope_forPublicClass_shouldReturnProject() {
+      Optional<TSNode> declarationNode = javaService.findDeclarationNode(tempFile, 3, 15);
+      assertTrue(declarationNode.isPresent());
+      Optional<ScopeType> scope = javaService.getNodeScope(declarationNode.get());
+      assertTrue(scope.isPresent());
+      assertEquals(ScopeType.PROJECT, scope.get());
     }
   }
 }
