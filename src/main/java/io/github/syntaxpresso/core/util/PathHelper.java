@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -81,6 +82,15 @@ public class PathHelper {
       String content = Files.readString(file.toPath(), StandardCharsets.UTF_8);
       String newContent = new StringBuilder(content).replace(start, end, newText).toString();
       Files.writeString(file.toPath(), newContent, StandardCharsets.UTF_8);
+      return true;
+    } catch (IOException e) {
+      return false;
+    }
+  }
+
+  public boolean moveFile(File source, File destination) {
+    try {
+      Files.move(source.toPath(), destination.toPath(), StandardCopyOption.REPLACE_EXISTING);
       return true;
     } catch (IOException e) {
       return false;
