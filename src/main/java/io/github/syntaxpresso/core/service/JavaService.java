@@ -5,11 +5,15 @@ import io.github.syntaxpresso.core.service.extra.ScopeType;
 import io.github.syntaxpresso.core.util.PathHelper;
 import io.github.syntaxpresso.core.util.TSHelper;
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -154,6 +158,9 @@ public class JavaService {
 
           (class_declaration
               name: (identifier) @name) @declaration
+
+          (method_declaration
+              name: (identifier) @name) @declaration
         ]
         """;
     TSQuery query = new TSQuery(this.tsHelper.getParser().getLanguage(), declarationQuery);
@@ -233,6 +240,95 @@ public class JavaService {
     }
     if ("field_declaration".equals(nodeType) || "method_declaration".equals(nodeType)) {
       return isPublic ? Optional.of(ScopeType.PROJECT) : Optional.of(ScopeType.CLASS);
+    }
+    return Optional.empty();
+  }
+
+  public List<TSNode> findUsages(File declarationFile, TSNode declarationNode, File cwd) {
+    Optional<ScopeType> scopeTypeOpt = getNodeScope(declarationNode);
+    if (scopeTypeOpt.isEmpty()) {
+      return Collections.emptyList();
+    }
+    ScopeType scope = scopeTypeOpt.get();
+    Optional<String> sourceCodeOpt = pathHelper.getFileSourceCode(declarationFile);
+    if (sourceCodeOpt.isEmpty()) {
+      return Collections.emptyList();
+    }
+    Optional<String> symbolNameOpt = getSymbolName(declarationNode, sourceCodeOpt.get());
+    if (symbolNameOpt.isEmpty()) {
+      return Collections.emptyList();
+    }
+    String symbolName = symbolNameOpt.get();
+    List<File> filesToSearch;
+    if (scope == ScopeType.PROJECT) {
+      try {
+        filesToSearch = pathHelper.findFilesByExtention(cwd, "java");
+      } catch (IOException e) {
+        return Collections.emptyList();
+      }
+    } else {
+      filesToSearch = Collections.singletonList(declarationFile);
+    }
+    List<TSNode> usages = new ArrayList<>();
+    String usageQuery = "((identifier) @usage)";
+    TSQuery query = new TSQuery(tsHelper.getParser().getLanguage(), usageQuery);
+    TSQueryCursor cursor = new TSQueryCursor();
+    for (File file : filesToSearch) {
+      Optional<String> currentSourceOpt = pathHelper.getFileSourceCode(file);
+      Optional<TSTree> treeOpt = tsHelper.parse(file);
+      if (currentSourceOpt.isEmpty() || treeOpt.isEmpty()) {
+        continue;
+      }
+      cursor.exec(query, treeOpt.get().getRootNode());
+      TSQueryMatch match = new TSQueryMatch();
+      while (cursor.nextMatch(match)) {
+        for (TSQueryCapture capture : match.getCaptures()) {
+          TSNode potentialUsage = capture.getNode();
+          String potentialUsageName =
+              currentSourceOpt
+                  .get()
+                  .substring(potentialUsage.getStartByte(), potentialUsage.getEndByte());
+          if (potentialUsageName.equals(symbolName)) {
+            if (scope == ScopeType.PROJECT && !file.equals(declarationFile)) {
+              usages.add(potentialUsage);
+            } else {
+              Optional<TSNode> foundDeclaration =
+                  findDeclarationNode(
+                      file,
+                      potentialUsage.getStartPoint().getRow() + 1,
+                      potentialUsage.getStartPoint().getColumn() + 1);
+              if (foundDeclaration.isPresent()
+                  && foundDeclaration.get().getStartByte() == declarationNode.getStartByte()) {
+                usages.add(potentialUsage);
+              }
+            }
+          }
+        }
+      }
+    }
+    return usages;
+  }
+
+  private Optional<String> getSymbolName(TSNode declarationNode, String sourceCode) {
+    String nameQuery =
+        """
+        [
+          (local_variable_declaration declarator: (variable_declarator name: (identifier) @name))
+          (formal_parameter name: (identifier) @name)
+          (field_declaration declarator: (variable_declarator name: (identifier) @name))
+          (class_declaration name: (identifier) @name)
+          (method_declaration name: (identifier) @name)
+        ]
+        """;
+    TSQuery query = new TSQuery(tsHelper.getParser().getLanguage(), nameQuery);
+    TSQueryCursor cursor = new TSQueryCursor();
+    cursor.exec(query, declarationNode);
+    TSQueryMatch match = new TSQueryMatch();
+    if (cursor.nextMatch(match)) {
+      for (TSQueryCapture capture : match.getCaptures()) {
+        TSNode nameNode = capture.getNode();
+        return Optional.of(sourceCode.substring(nameNode.getStartByte(), nameNode.getEndByte()));
+      }
     }
     return Optional.empty();
   }
