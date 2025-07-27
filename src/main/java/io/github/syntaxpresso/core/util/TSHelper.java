@@ -61,4 +61,13 @@ public class TSHelper {
     Optional<TSTree> tree = this.parse(file);
     return tree.flatMap(tsTree -> this.getNodeAtPosition(tsTree, line, column));
   }
+
+  public boolean renameNode(File file, TSNode node, String newName) {
+    if (file == null || node == null || newName == null) {
+      return false;
+    }
+    int start = node.getStartByte();
+    int end = node.getEndByte();
+    return this.pathHelper.replaceTextInFile(file, start, end, newName);
+  }
 }
