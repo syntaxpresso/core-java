@@ -28,6 +28,11 @@ public class DataTransferObject<T> {
     return new DataTransferObject<>(true, data, null);
   }
 
+  /** Static factory method for creating a success without response. */
+  public static <T> DataTransferObject<T> success() {
+    return new DataTransferObject<>(true, null, null);
+  }
+
   /**
    * Static factory method for creating a failure response with a reason.
    *
