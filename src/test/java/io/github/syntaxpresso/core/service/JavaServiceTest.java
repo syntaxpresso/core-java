@@ -11,6 +11,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -27,6 +28,7 @@ class JavaServiceTest {
   private JavaService javaService;
   private TSHelper tsHelper;
   private PathHelper pathHelper;
+  private String sourceCodeA;
 
   @BeforeEach
   void setUp() {
@@ -271,6 +273,77 @@ class JavaServiceTest {
       Optional<ScopeType> scope = javaService.getNodeScope(declarationNode.get());
       assertTrue(scope.isPresent());
       assertEquals(ScopeType.PROJECT, scope.get());
+    }
+  }
+
+  @Nested
+  @DisplayName("findUsages()")
+  class FindUsagesTests {
+    private File projectDir;
+    private File classAFile;
+    private File classBFile;
+
+    @BeforeEach
+    void setup(@TempDir Path tempDir) throws IOException {
+      projectDir = tempDir.toFile();
+      classAFile = tempDir.resolve("ClassA.java").toFile();
+      classBFile = tempDir.resolve("ClassB.java").toFile();
+      sourceCodeA =
+          """
+          public class ClassA {           // line 1
+            private int privateField = 1; // line 2
+            public void publicMethod() {  // line 3
+              int localVar = 0;         // line 4
+              localVar++;                 // line 5
+              privateField++;             // line 6
+            }
+          }
+          """;
+      String sourceB =
+          """
+          public class ClassB {
+            public void anotherMethod() {
+              ClassA a = new ClassA();
+              a.publicMethod();
+              a.publicMethod();
+            }
+          }
+          """;
+      Files.writeString(classAFile.toPath(), sourceCodeA);
+      Files.writeString(classBFile.toPath(), sourceB);
+    }
+
+    @Test
+    @DisplayName("should find usages of a local variable only within its method")
+    void findUsages_forLocalVariable_shouldReturnLocalUsages() {
+      Optional<TSNode> declarationNode = javaService.findDeclarationNode(classAFile, 4, 11);
+      assertTrue(declarationNode.isPresent());
+      assertEquals("local_variable_declaration", declarationNode.get().getType());
+      List<TSNode> usages = javaService.findUsages(classAFile, declarationNode.get(), projectDir);
+      assertEquals(2, usages.size());
+      assertEquals(
+          "localVar",
+          sourceCodeA.substring(usages.get(0).getStartByte(), usages.get(0).getEndByte()));
+    }
+
+    @Test
+    @DisplayName("should find usages of a private field only within its class")
+    void findUsages_forPrivateField_shouldReturnClassUsages() {
+      Optional<TSNode> declarationNode = javaService.findDeclarationNode(classAFile, 2, 19);
+      assertTrue(declarationNode.isPresent());
+      assertEquals("field_declaration", declarationNode.get().getType());
+      List<TSNode> usages = javaService.findUsages(classAFile, declarationNode.get(), projectDir);
+      assertEquals(2, usages.size());
+    }
+
+    @Test
+    @DisplayName("should find usages of a public method across the project")
+    void findUsages_forPublicMethod_shouldReturnProjectUsages() {
+      Optional<TSNode> declarationNode = javaService.findDeclarationNode(classAFile, 3, 19);
+      assertTrue(declarationNode.isPresent());
+      assertEquals("method_declaration", declarationNode.get().getType());
+      List<TSNode> usages = javaService.findUsages(classAFile, declarationNode.get(), projectDir);
+      assertEquals(3, usages.size());
     }
   }
 }
