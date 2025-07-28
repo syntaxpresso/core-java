@@ -1,24 +1,19 @@
 package io.github.syntaxpresso.core.service;
 
 import io.github.syntaxpresso.core.command.java.extra.SourceDirectoryType;
+import io.github.syntaxpresso.core.common.TSFile;
 import io.github.syntaxpresso.core.service.extra.ScopeType;
 import io.github.syntaxpresso.core.util.PathHelper;
-import io.github.syntaxpresso.core.util.TSHelper;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.treesitter.TSNode;
@@ -26,22 +21,11 @@ import org.treesitter.TSQuery;
 import org.treesitter.TSQueryCapture;
 import org.treesitter.TSQueryCursor;
 import org.treesitter.TSQueryMatch;
-import org.treesitter.TSTree;
 
 @Data
 @RequiredArgsConstructor
 public class JavaService {
   private final PathHelper pathHelper;
-  private final TSHelper tsHelper;
-  private static final String SRC_MAIN_JAVA = "src/main/java";
-  private static final String SRC_TEST_JAVA = "src/test/java";
-
-  @Data
-  @AllArgsConstructor
-  private static class Change {
-    private TSNode node;
-    private String newText;
-  }
 
   public boolean isJavaProject(File rootDir) {
     if (rootDir == null || !rootDir.isDirectory()) {
@@ -53,36 +37,53 @@ public class JavaService {
         || Files.isDirectory(rootDir.toPath().resolve("src/main/java"));
   }
 
-  public Optional<File> findFilePath(
-      File rootDir, String packageName, SourceDirectoryType sourceDirectoryType) {
-    if (rootDir == null || packageName == null || sourceDirectoryType == null) {
+  public Optional<Path> findFilePath(
+      Path rootDir, String packageName, SourceDirectoryType sourceDirectoryType) {
+    if (rootDir == null || !Files.isDirectory(rootDir)) {
       return Optional.empty();
     }
-    Path packageAsPath = Path.of(packageName.replace('.', '/'));
-    Optional<File> sourceDirOptional =
-        (sourceDirectoryType == SourceDirectoryType.MAIN)
-            ? this.pathHelper.findDirectoryRecursively(rootDir, SRC_MAIN_JAVA)
-            : this.pathHelper.findDirectoryRecursively(rootDir, SRC_TEST_JAVA);
+    if (packageName == null || packageName.isBlank()) {
+      return Optional.empty();
+    }
+    if (sourceDirectoryType == null) {
+      return Optional.empty();
+    }
+    final String srcDirName =
+        (sourceDirectoryType == SourceDirectoryType.MAIN) ? "src/main/java" : "src/test/java";
+    Optional<Path> sourceDirOptional;
+    try {
+      sourceDirOptional = this.pathHelper.findDirectoryRecursively(rootDir, srcDirName);
+    } catch (IOException e) {
+      e.printStackTrace();
+      return Optional.empty();
+    }
     if (sourceDirOptional.isEmpty()) {
       return Optional.empty();
     }
-    File fullPackageDir = sourceDirOptional.get().toPath().resolve(packageAsPath).toFile();
-    if (fullPackageDir.exists() || fullPackageDir.mkdirs()) {
+    Path packageAsPath = Path.of(packageName.replace('.', '/'));
+    Path fullPackageDir = sourceDirOptional.get().resolve(packageAsPath);
+    try {
+      Files.createDirectories(fullPackageDir);
       return Optional.of(fullPackageDir);
+    } catch (IOException e) {
+      e.printStackTrace();
+      return Optional.empty();
     }
-    return Optional.empty();
   }
 
-  public Boolean isMainClass(TSTree tree, String sourceCode) {
+  public Boolean isMainClass(TSFile file) {
+    if (!file.getIsValid()) {
+      return false;
+    }
     String mainMethodQuery =
         "(class_declaration  body: (class_body    (method_declaration       (modifiers) @mods      "
             + " type: (void_type)       name: (identifier) @name       parameters:"
             + " (formal_parameters         [          (formal_parameter type: (array_type element:"
             + " (type_identifier) @param_type))          (spread_parameter (type_identifier)"
             + " @param_type)        ]      )     )  ))";
-    TSQuery query = new TSQuery(this.tsHelper.getParser().getLanguage(), mainMethodQuery);
+    TSQuery query = new TSQuery(file.getParser().getLanguage(), mainMethodQuery);
     TSQueryCursor queryCursor = new TSQueryCursor();
-    queryCursor.exec(query, tree.getRootNode());
+    queryCursor.exec(query, file.getTree().getRootNode());
     TSQueryMatch match = new TSQueryMatch();
     while (queryCursor.nextMatch(match)) {
       Map<String, TSNode> captures = new HashMap<>();
@@ -94,11 +95,13 @@ public class JavaService {
       TSNode modsNode = captures.get("mods");
       TSNode paramTypeNode = captures.get("param_type");
       if (nameNode != null && modsNode != null && paramTypeNode != null) {
-        String methodName = sourceCode.substring(nameNode.getStartByte(), nameNode.getEndByte());
+        String methodName =
+            file.getSourceCode().substring(nameNode.getStartByte(), nameNode.getEndByte());
         String paramType =
-            sourceCode.substring(paramTypeNode.getStartByte(), paramTypeNode.getEndByte());
+            file.getSourceCode()
+                .substring(paramTypeNode.getStartByte(), paramTypeNode.getEndByte());
         String methodModifiers =
-            sourceCode.substring(modsNode.getStartByte(), modsNode.getEndByte());
+            file.getSourceCode().substring(modsNode.getStartByte(), modsNode.getEndByte());
         Set<String> modifiersSet =
             new HashSet<>(Arrays.asList(methodModifiers.trim().split("\\s+")));
         boolean hasCorrectModifiers =
@@ -113,95 +116,18 @@ public class JavaService {
     return false;
   }
 
-  public Optional<String> getPackageName(TSTree tree, String sourceCode) {
+  public Optional<String> getPackageName(TSFile file) {
     String packageQuery = "(package_declaration (scoped_identifier) @package_name)";
-    TSQuery query = new TSQuery(this.tsHelper.getParser().getLanguage(), packageQuery);
+    TSQuery query = new TSQuery(file.getParser().getLanguage(), packageQuery);
     TSQueryCursor cursor = new TSQueryCursor();
-    cursor.exec(query, tree.getRootNode());
+    cursor.exec(query, file.getTree().getRootNode());
     TSQueryMatch match = new TSQueryMatch();
     if (cursor.nextMatch(match)) {
       for (TSQueryCapture capture : match.getCaptures()) {
         TSNode node = capture.getNode();
-        String packageName = sourceCode.substring(node.getStartByte(), node.getEndByte());
+        String packageName = file.getTextFromRange(node.getStartByte(), node.getEndByte());
         return Optional.of(packageName);
       }
-    }
-    return Optional.empty();
-  }
-
-  public Optional<TSNode> findDeclarationNode(File file, int line, int column) {
-    Optional<String> sourceCodeOpt = this.pathHelper.getFileSourceCode(file);
-    if (sourceCodeOpt.isEmpty()) {
-      return Optional.empty();
-    }
-    String sourceCode = sourceCodeOpt.get();
-    Optional<TSTree> treeOpt = this.tsHelper.parse(sourceCode);
-    if (treeOpt.isEmpty()) {
-      return Optional.empty();
-    }
-    TSTree tree = treeOpt.get();
-    Optional<TSNode> startingNodeOpt = this.tsHelper.getNodeAtPosition(tree, line, column);
-    if (startingNodeOpt.isEmpty()) {
-      return Optional.empty();
-    }
-    TSNode startingNode = startingNodeOpt.get();
-    String symbolName =
-        sourceCode.substring(startingNode.getStartByte(), startingNode.getEndByte());
-    String declarationQuery =
-        """
-        [
-          (local_variable_declaration
-            declarator: (variable_declarator
-              name: (identifier) @name)) @declaration
-          (formal_parameter
-            name: (identifier) @name) @declaration
-          (field_declaration
-            declarator: (variable_declarator
-              name: (identifier) @name)) @declaration
-          (class_declaration
-              name: (identifier) @name) @declaration
-          (method_declaration
-              name: (identifier) @name) @declaration
-        ]
-        """;
-    TSQuery query = new TSQuery(this.tsHelper.getParser().getLanguage(), declarationQuery);
-    TSQueryCursor cursor = new TSQueryCursor();
-    TSNode scopeNode = startingNode;
-    while (scopeNode != null) {
-      cursor.exec(query, scopeNode);
-      TSQueryMatch match = new TSQueryMatch();
-      TSNode bestCandidate = null;
-      while (cursor.nextMatch(match)) {
-        TSNode declarationCandidate = null;
-        TSNode nameCandidate = null;
-        for (TSQueryCapture capture : match.getCaptures()) {
-          String captureName = query.getCaptureNameForId(capture.getIndex());
-          if ("declaration".equals(captureName)) {
-            declarationCandidate = capture.getNode();
-          } else if ("name".equals(captureName)) {
-            nameCandidate = capture.getNode();
-          }
-        }
-        if (nameCandidate != null && declarationCandidate != null) {
-          String capturedName =
-              sourceCode.substring(nameCandidate.getStartByte(), nameCandidate.getEndByte());
-          if (capturedName.equals(symbolName)) {
-            if (bestCandidate == null
-                || declarationCandidate.getStartByte() > bestCandidate.getStartByte()) {
-              if (startingNode.equals(nameCandidate)) {
-                return Optional.of(declarationCandidate);
-              }
-              if (declarationCandidate.getStartByte() < startingNode.getStartByte()) {
-                bestCandidate = declarationCandidate;
-              }
-            }
-          }
-        }
-      }
-      if (bestCandidate != null) {
-        return Optional.of(bestCandidate);
-      }
-      scopeNode = scopeNode.getParent();
     }
     return Optional.empty();
   }
@@ -242,111 +168,7 @@ public class JavaService {
     return Optional.empty();
   }
 
-  public List<TSNode> findUsages(File declarationFile, TSNode declarationNode, File cwd) {
-    Optional<ScopeType> scopeTypeOpt = getNodeScope(declarationNode);
-    if (scopeTypeOpt.isEmpty()) {
-      return Collections.emptyList();
-    }
-    ScopeType scope = scopeTypeOpt.get();
-    Optional<String> sourceCodeOpt = pathHelper.getFileSourceCode(declarationFile);
-    if (sourceCodeOpt.isEmpty()) {
-      return Collections.emptyList();
-    }
-    Optional<String> symbolNameOpt = getSymbolName(declarationNode, sourceCodeOpt.get());
-    if (symbolNameOpt.isEmpty()) {
-      return Collections.emptyList();
-    }
-    String symbolName = symbolNameOpt.get();
-    List<File> filesToSearch;
-    if (scope == ScopeType.PROJECT) {
-      try {
-        filesToSearch = pathHelper.findFilesByExtention(cwd, "java");
-      } catch (IOException e) {
-        return Collections.emptyList();
-      }
-    } else {
-      filesToSearch = Collections.singletonList(declarationFile);
-    }
-    List<TSNode> usages = new ArrayList<>();
-    String usageQuery = "((identifier) @usage)";
-    TSQuery query = new TSQuery(tsHelper.getParser().getLanguage(), usageQuery);
-    TSQueryCursor cursor = new TSQueryCursor();
-    for (File file : filesToSearch) {
-      Optional<String> currentSourceOpt = pathHelper.getFileSourceCode(file);
-      Optional<TSTree> treeOpt = tsHelper.parse(file);
-      if (currentSourceOpt.isEmpty() || treeOpt.isEmpty()) {
-        continue;
-      }
-      cursor.exec(query, treeOpt.get().getRootNode());
-      TSQueryMatch match = new TSQueryMatch();
-      while (cursor.nextMatch(match)) {
-        for (TSQueryCapture capture : match.getCaptures()) {
-          TSNode potentialUsage = capture.getNode();
-          String potentialUsageName =
-              currentSourceOpt
-                  .get()
-                  .substring(potentialUsage.getStartByte(), potentialUsage.getEndByte());
-          if (potentialUsageName.equals(symbolName)) {
-            if (scope == ScopeType.PROJECT && !file.equals(declarationFile)) {
-              usages.add(potentialUsage);
-            } else {
-              Optional<TSNode> foundDeclaration =
-                  findDeclarationNode(
-                      file,
-                      potentialUsage.getStartPoint().getRow() + 1,
-                      potentialUsage.getStartPoint().getColumn() + 1);
-              if (foundDeclaration.isPresent()
-                  && foundDeclaration.get().getStartByte() == declarationNode.getStartByte()) {
-                usages.add(potentialUsage);
-              }
-            }
-          }
-        }
-      }
-    }
-    return usages;
-  }
-
-  public boolean updatePackageAndImports(File file, String oldName, String newName) {
-    Optional<String> sourceCodeOpt = pathHelper.getFileSourceCode(file);
-    Optional<TSTree> treeOpt = tsHelper.parse(file);
-    if (sourceCodeOpt.isEmpty() || treeOpt.isEmpty()) {
-      return false;
-    }
-    String sourceCode = sourceCodeOpt.get();
-    TSTree tree = treeOpt.get();
-    String packageImportQuery =
-        """
-        [
-          (package_declaration (scoped_identifier) @name)
-          (import_declaration (scoped_identifier) @name)
-        ]
-        """;
-    TSQuery query = new TSQuery(tsHelper.getParser().getLanguage(), packageImportQuery);
-    TSQueryCursor cursor = new TSQueryCursor();
-    cursor.exec(query, tree.getRootNode());
-    List<Change> changes = new ArrayList<>();
-    TSQueryMatch match = new TSQueryMatch();
-    while (cursor.nextMatch(match)) {
-      for (TSQueryCapture capture : match.getCaptures()) {
-        TSNode node = capture.getNode();
-        String currentName = sourceCode.substring(node.getStartByte(), node.getEndByte());
-        if (currentName.startsWith(oldName)) {
-          String updatedName = currentName.replaceFirst(oldName, newName);
-          changes.add(new Change(node, updatedName));
-        }
-      }
-    }
-    changes.sort(Comparator.comparingInt((Change c) -> c.getNode().getStartByte()).reversed());
-    for (Change change : changes) {
-      if (!tsHelper.renameNode(file, change.getNode(), change.getNewText())) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  private Optional<String> getSymbolName(TSNode declarationNode, String sourceCode) {
+  private Optional<String> getSymbolName(TSFile file, TSNode declarationNode) {
     String nameQuery =
         """
         [
@@ -357,14 +179,14 @@ public class JavaService {
           (method_declaration name: (identifier) @name)
         ]
         """;
-    TSQuery query = new TSQuery(tsHelper.getParser().getLanguage(), nameQuery);
+    TSQuery query = new TSQuery(file.getParser().getLanguage(), nameQuery);
     TSQueryCursor cursor = new TSQueryCursor();
     cursor.exec(query, declarationNode);
     TSQueryMatch match = new TSQueryMatch();
     if (cursor.nextMatch(match)) {
       for (TSQueryCapture capture : match.getCaptures()) {
         TSNode nameNode = capture.getNode();
-        return Optional.of(sourceCode.substring(nameNode.getStartByte(), nameNode.getEndByte()));
+        return Optional.of(file.getTextFromRange(nameNode.getStartByte(), nameNode.getEndByte()));
       }
     }
     return Optional.empty();
