@@ -5,13 +5,10 @@ import io.github.syntaxpresso.core.command.java.GetMainClassCommand;
 import io.github.syntaxpresso.core.command.java.RenameCommand;
 import io.github.syntaxpresso.core.service.JavaService;
 import io.github.syntaxpresso.core.util.PathHelper;
-import io.github.syntaxpresso.core.util.TSHelper;
-import org.treesitter.TreeSitterJava;
 import picocli.CommandLine.IFactory;
 
 public class CommandFactory implements IFactory {
   private final PathHelper pathHelper = new PathHelper();
-  private final TSHelper javaTsHelper = new TSHelper(new TreeSitterJava(), pathHelper);
   private final JavaService javaService = new JavaService(pathHelper, javaTsHelper);
 
   @Override
