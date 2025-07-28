@@ -38,11 +38,7 @@ public class PathHelper {
               .filter(path -> path.toString().endsWith(supportedLanguage.getFileExtension()))
               .collect(Collectors.toList());
       for (Path filePath : filePaths) {
-        try {
-          tsFiles.add(new TSFile(supportedLanguage, filePath));
-        } catch (IOException e) {
-          System.err.println("Error processing file: " + filePath + " - " + e.getMessage());
-        }
+        tsFiles.add(new TSFile(supportedLanguage, filePath));
       }
     }
     return tsFiles;
