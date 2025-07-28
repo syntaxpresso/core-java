@@ -1,5 +1,6 @@
 package io.github.syntaxpresso.core.common;
 
+import io.github.syntaxpresso.core.common.extra.SupportedLanguage;
 import java.util.HashMap;
 import java.util.Map;
 import org.treesitter.TSLanguage;
@@ -32,17 +33,17 @@ public final class ParserFactory {
    * existing instance is returned. Otherwise, a new one is created, configured, and cached for
    * future use by the thread.
    *
-   * @param language The {@link TSLanguage} grammar to configure the parser with.
+   * @param supportedLanguage The {@link SupportedLanguage} grammar to configure the parser with.
    * @return A thread-safe {@link TSParser} configured for the specified language.
    */
-  public static TSParser get(TSLanguage language) {
+  public static TSParser get(SupportedLanguage supportedLanguage) {
     // Get the map for the current thread.
     Map<TSLanguage, TSParser> parserMap = PARSERS.get();
 
     // Use computeIfAbsent to get the existing parser or create a new one.
     // This is an atomic and clean way to handle the "get or create" logic.
     return parserMap.computeIfAbsent(
-        language,
+        supportedLanguage.getLanguage(),
         lang -> {
           TSParser parser = new TSParser();
           parser.setLanguage(lang);
