@@ -56,11 +56,14 @@ public class JavaService {
       e.printStackTrace();
       return Optional.empty();
     }
-    if (sourceDirOptional.isEmpty()) {
-      return Optional.empty();
+    Path sourceDir;
+    if (sourceDirOptional.isPresent()) {
+      sourceDir = sourceDirOptional.get();
+    } else {
+      sourceDir = rootDir.resolve(srcDirName);
     }
     Path packageAsPath = Path.of(packageName.replace('.', '/'));
-    Path fullPackageDir = sourceDirOptional.get().resolve(packageAsPath);
+    Path fullPackageDir = sourceDir.resolve(packageAsPath);
     try {
       Files.createDirectories(fullPackageDir);
       return Optional.of(fullPackageDir);
@@ -127,5 +130,4 @@ public class JavaService {
     }
     return Optional.empty();
   }
-
 }
