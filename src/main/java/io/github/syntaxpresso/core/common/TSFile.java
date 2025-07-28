@@ -180,8 +180,18 @@ public class TSFile {
     if (this.tree == null) {
       throw new IllegalStateException("Tree is not set; cannot get a node by position.");
     }
+    if (line <= 0 || column <= 0) {
+      return null;
+    }
     TSNode rootNode = this.tree.getRootNode();
-    TSPoint point = new TSPoint(line - 1, column - 1);
+    TSPoint endPoint = rootNode.getEndPoint();
+    int requestedLine = line - 1;
+    int requestedColumn = column - 1;
+    if (requestedLine > endPoint.getRow()
+        || (requestedLine == endPoint.getRow() && requestedColumn > endPoint.getColumn())) {
+      return null;
+    }
+    TSPoint point = new TSPoint(requestedLine, requestedColumn);
     return rootNode.getNamedDescendantForPointRange(point, point);
   }
 
