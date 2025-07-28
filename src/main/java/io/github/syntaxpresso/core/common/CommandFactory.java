@@ -9,7 +9,7 @@ import picocli.CommandLine.IFactory;
 
 public class CommandFactory implements IFactory {
   private final PathHelper pathHelper = new PathHelper();
-  private final JavaService javaService = new JavaService(pathHelper, javaTsHelper);
+  private final JavaService javaService = new JavaService(pathHelper);
 
   @Override
   @SuppressWarnings("unchecked")
