@@ -1,11 +1,12 @@
 package io.github.syntaxpresso.core.util;
 
-import java.io.File;
+import io.github.syntaxpresso.core.common.TSFile;
+import io.github.syntaxpresso.core.common.extra.SupportedLanguage;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -16,90 +17,75 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 public class PathHelper {
-  public File convertToFile(String filePath) {
-    return new File(filePath);
-  }
 
-  public Optional<String> getFileSourceCode(File file) {
-    try {
-      String content = Files.readString(file.toPath(), StandardCharsets.UTF_8);
-      return Optional.of(content);
-    } catch (IOException e) {
-      return Optional.empty();
+  /**
+   * Recursively finds all files in a directory that match a given language's file extension and
+   * converts them into a list of {@link TSFile} objects.
+   *
+   * @param rootDir The directory to start the search from.
+   * @param supportedLanguage The language whose file extension will be used for filtering.
+   * @return A {@link List} of {@link TSFile} objects. The list will be empty if no matching files
+   *     are found.
+   * @throws IOException if an I/O error occurs when walking the file tree.
+   */
+  public List<TSFile> findFilesByExtention(Path rootDir, SupportedLanguage supportedLanguage)
+      throws IOException {
+    List<TSFile> tsFiles = new ArrayList<>();
+    try (Stream<Path> stream = Files.walk(rootDir)) {
+      List<Path> filePaths =
+          stream
+              .filter(Files::isRegularFile)
+              .filter(path -> path.toString().endsWith(supportedLanguage.getFileExtension()))
+              .collect(Collectors.toList());
+      for (Path filePath : filePaths) {
+        try {
+          tsFiles.add(new TSFile(supportedLanguage, filePath));
+        } catch (IOException e) {
+          System.err.println("Error processing file: " + filePath + " - " + e.getMessage());
+        }
+      }
     }
+    return tsFiles;
   }
 
-  public Optional<String> getFileSourceCode(String filePath) {
-    File convertedFilePath = this.convertToFile(filePath);
-    return this.getFileSourceCode(convertedFilePath);
-  }
-
-  public boolean createFile(File file, String sourceCode) throws IOException {
-    try {
-      Files.writeString(file.toPath(), sourceCode, StandardCharsets.UTF_8);
-      return true;
-    } catch (IOException e) {
-      return false;
+  /**
+   * Recursively finds a directory by its name within a given root directory.
+   *
+   * @param rootDir The directory to start the search from.
+   * @param dirName The name of the directory to find.
+   * @return An {@link Optional} containing the {@link Path} of the found directory, or an empty
+   *     Optional if not found.
+   * @throws IOException if an I/O error occurs when walking the file tree.
+   * @throws IllegalArgumentException if rootDir is not a valid directory or dirName is null or
+   *     blank.
+   */
+  public Optional<Path> findDirectoryRecursively(Path rootDir, String dirName) throws IOException {
+    if (rootDir == null || !Files.isDirectory(rootDir)) {
+      throw new IllegalArgumentException(
+          "The provided root path is not a valid directory: " + rootDir);
     }
-  }
-
-  public List<File> findFilesByExtention(File cwd, String extension) throws IOException {
-    Path rootDir = cwd.toPath();
+    if (dirName == null || dirName.isBlank()) {
+      throw new IllegalArgumentException("Directory name must not be null or blank.");
+    }
+    String normalizedDirName = dirName.replace('\\', '/');
     try (Stream<Path> stream = Files.walk(rootDir)) {
       return stream
-          .filter(Files::isRegularFile)
-          .filter(path -> path.toString().endsWith("." + extension))
-          .map(Path::toFile)
-          .collect(Collectors.toList());
+          .filter(Files::isDirectory)
+          .filter(path -> path.toString().replace('\\', '/').endsWith(normalizedDirName))
+          .findFirst();
     }
   }
 
-  public Optional<File> findDirectoryRecursively(File rootDir, String dirName) {
-    if (rootDir == null || !rootDir.isDirectory() || dirName == null) {
-      return Optional.empty();
-    }
-    Path rootPath = rootDir.toPath();
-    try (Stream<Path> stream = Files.walk(rootPath)) {
-      Optional<Path> foundPathOptional =
-          stream
-              .filter(Files::isDirectory)
-              .filter(path -> path.toString().endsWith(dirName))
-              .findFirst();
-      if (foundPathOptional.isPresent()) {
-        Path foundPath = foundPathOptional.get();
-        return Optional.of(foundPath.toFile());
-      } else {
-        return Optional.empty();
-      }
-    } catch (IOException e) {
-      e.printStackTrace();
-      return Optional.empty();
-    }
-  }
-
-  public boolean replaceTextInFile(File file, int start, int end, String newText) {
+  /**
+   * Renames or moves a directory. This operation is not atomic.
+   *
+   * @param source The source path of the directory.
+   * @param destination The destination path.
+   * @return {@code true} if the operation is successful, {@code false} if an I/O error occurs.
+   */
+  public boolean renameDirectory(Path source, Path destination) {
     try {
-      String content = Files.readString(file.toPath(), StandardCharsets.UTF_8);
-      String newContent = new StringBuilder(content).replace(start, end, newText).toString();
-      Files.writeString(file.toPath(), newContent, StandardCharsets.UTF_8);
-      return true;
-    } catch (IOException e) {
-      return false;
-    }
-  }
-
-  public boolean moveFile(File source, File destination) {
-    try {
-      Files.move(source.toPath(), destination.toPath(), StandardCopyOption.REPLACE_EXISTING);
-      return true;
-    } catch (IOException e) {
-      return false;
-    }
-  }
-
-  public boolean renameDirectory(File source, File destination) {
-    try {
-      Files.move(source.toPath(), destination.toPath(), StandardCopyOption.REPLACE_EXISTING);
+      Files.move(source, destination, StandardCopyOption.REPLACE_EXISTING);
       return true;
     } catch (IOException e) {
       return false;
