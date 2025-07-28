@@ -18,7 +18,6 @@ public class TSFile {
   private File file;
   private TSTree tree;
   private String sourceCode;
-  private Boolean isValid;
 
   /**
    * Creates a TSFile instance from a given programming language and source code string.
@@ -38,11 +37,15 @@ public class TSFile {
    * @param path The path to the file to parse.
    * @throws IOException If the file cannot be read.
    */
-  public TSFile(SupportedLanguage supportedLanguage, Path path) throws IOException {
+  public TSFile(SupportedLanguage supportedLanguage, Path path) {
     this.parser = ParserFactory.get(supportedLanguage);
     this.file = path.toFile();
-    String content = Files.readString(path, StandardCharsets.UTF_8);
-    this.setData(content);
+    try {
+      String content = Files.readString(path, StandardCharsets.UTF_8);
+      this.setData(content);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
   }
 
   /**
@@ -55,11 +58,6 @@ public class TSFile {
       throw new IllegalStateException("Parser is not initialized.");
     }
     this.tree = this.parser.parseString(null, sourceCode);
-    if (this.tree.getRootNode().hasError()) {
-      this.isValid = false;
-    } else {
-      this.isValid = true;
-    }
     this.sourceCode = sourceCode;
   }
 
