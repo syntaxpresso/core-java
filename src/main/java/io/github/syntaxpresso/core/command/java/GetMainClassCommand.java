@@ -2,13 +2,14 @@ package io.github.syntaxpresso.core.command.java;
 
 import io.github.syntaxpresso.core.command.java.dto.GetMainClassResponse;
 import io.github.syntaxpresso.core.common.DataTransferObject;
+import io.github.syntaxpresso.core.common.TSFile;
+import io.github.syntaxpresso.core.common.extra.SupportedLanguage;
 import io.github.syntaxpresso.core.service.JavaService;
-import java.io.File;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.Callable;
 import lombok.RequiredArgsConstructor;
-import org.treesitter.TSTree;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
@@ -18,30 +19,22 @@ public class GetMainClassCommand implements Callable<Void> {
   private final JavaService javaService;
 
   @Option(names = "--cwd", description = "Current Working Directory", required = true)
-  private File cwd;
+  private Path cwd;
 
   @Override
   public Void call() throws Exception {
     GetMainClassResponse response = new GetMainClassResponse();
-    List<File> allFiles = this.javaService.getPathHelper().findFilesByExtention(this.cwd, "java");
-    for (File file : allFiles) {
-      Optional<TSTree> tree = this.javaService.getTsHelper().parse(file);
-      if (tree.isEmpty()) {
-        continue;
-      }
-      Optional<String> sourceCode = this.javaService.getPathHelper().getFileSourceCode(file);
-      if (sourceCode.isEmpty()) {
-        continue;
-      }
-      boolean isMainClass = this.javaService.isMainClass(tree.get(), sourceCode.get());
+    List<TSFile> allFiles =
+        this.javaService.getPathHelper().findFilesByExtention(this.cwd, SupportedLanguage.JAVA);
+    for (TSFile file : allFiles) {
+      boolean isMainClass = this.javaService.isMainClass(file);
       if (isMainClass) {
-        Optional<String> packageName =
-            this.javaService.getPackageName(tree.get(), sourceCode.get());
+        Optional<String> packageName = this.javaService.getPackageName(file);
         if (packageName.isEmpty()) {
           System.out.println(DataTransferObject.error("Package name not found"));
           return null;
         }
-        response.setFilePath(file.getAbsolutePath());
+        response.setFilePath(file.getFile().getAbsolutePath());
         response.setPackageName(packageName.get());
         System.out.println(DataTransferObject.success(response));
         return null;

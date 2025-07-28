@@ -5,8 +5,10 @@ import io.github.syntaxpresso.core.command.java.dto.CreateNewJavaFileResponse;
 import io.github.syntaxpresso.core.command.java.extra.JavaFileTemplate;
 import io.github.syntaxpresso.core.command.java.extra.SourceDirectoryType;
 import io.github.syntaxpresso.core.common.DataTransferObject;
+import io.github.syntaxpresso.core.common.TSFile;
+import io.github.syntaxpresso.core.common.extra.SupportedLanguage;
 import io.github.syntaxpresso.core.service.JavaService;
-import java.io.File;
+import java.nio.file.Path;
 import java.util.Optional;
 import java.util.concurrent.Callable;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +21,7 @@ public class CreateNewFileCommand implements Callable<Void> {
   private final JavaService javaService;
 
   @Option(names = "--cwd", description = "Current Working Directory", required = true)
-  private File cwd;
+  private Path cwd;
 
   @Option(
       names = "--package-name",
@@ -45,31 +47,21 @@ public class CreateNewFileCommand implements Callable<Void> {
 
   @Override
   public Void call() throws Exception {
-    String className = fileName.trim();
+    String className = this.fileName.trim();
     className = Files.getNameWithoutExtension(className);
     String template = this.fileType.getSourceContent(this.packageName, className);
-    boolean isSourceCodeValid = this.javaService.getTsHelper().isSourceCodeValid(template);
-    if (isSourceCodeValid) {
-      Optional<File> filePath =
-          this.javaService.findFilePath(this.cwd, this.packageName, sourceDirectoryType);
-      if (filePath.isEmpty()) {
-        System.out.println(DataTransferObject.error("Unable to find file path."));
-        return null;
-      }
-      File fileToCreate = filePath.get().toPath().resolve(className.concat(".java")).toFile();
-      Boolean fileCreated = this.javaService.getPathHelper().createFile(fileToCreate, template);
-      if (fileCreated) {
-        CreateNewJavaFileResponse response =
-            CreateNewJavaFileResponse.builder().filePath(fileToCreate.getAbsolutePath()).build();
-        System.out.println(DataTransferObject.success(response));
-        return null;
-      }
-      System.out.println(DataTransferObject.error("Unable to create file."));
-    } else {
-      System.out.println(
-          DataTransferObject.error(
-              "The generated code for " + this.fileName + " did not pass syntax validation."));
+    TSFile file = new TSFile(SupportedLanguage.JAVA, template);
+    Optional<Path> filePath =
+        this.javaService.findFilePath(this.cwd, this.packageName, this.sourceDirectoryType);
+    if (filePath.isEmpty()) {
+      System.out.println(DataTransferObject.error("Unable to find file path."));
+      return null;
     }
+    file.saveAs(
+        filePath.get().resolve(className.concat(SupportedLanguage.JAVA.getFileExtension())));
+    CreateNewJavaFileResponse response =
+        CreateNewJavaFileResponse.builder().filePath(file.getFile().getAbsolutePath()).build();
+    System.out.println(DataTransferObject.success(response));
     return null;
   }
 }
