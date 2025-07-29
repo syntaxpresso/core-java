@@ -156,12 +156,17 @@ public class TSFile {
     if (parentDir == null) {
       throw new IllegalStateException("Unable to get parent directory");
     }
-    Path targetPath =
-        parentDir.resolve(
-            newName
-                + SupportedLanguage.fromLanguage(this.parser.getLanguage())
-                    .get()
-                    .getFileExtension());
+    Path targetPath;
+    if (newName.contains(".")) {
+      targetPath = parentDir.resolve(newName);
+    } else {
+      targetPath =
+          parentDir.resolve(
+              newName
+                  + SupportedLanguage.fromLanguage(this.parser.getLanguage())
+                      .get()
+                      .getFileExtension());
+    }
     this.file = targetPath.toFile();
   }
 
