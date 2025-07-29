@@ -2,14 +2,19 @@ package io.github.syntaxpresso.core.service;
 
 import io.github.syntaxpresso.core.command.java.extra.SourceDirectoryType;
 import io.github.syntaxpresso.core.common.TSFile;
+import io.github.syntaxpresso.core.common.extra.SupportedLanguage;
+import io.github.syntaxpresso.core.service.extra.JavaIdentifierType;
+import io.github.syntaxpresso.core.service.extra.ScopeType;
 import io.github.syntaxpresso.core.util.PathHelper;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -129,5 +134,117 @@ public class JavaService {
       }
     }
     return Optional.empty();
+  }
+
+  public Optional<ScopeType> getNodeScope(TSNode node) {
+    if (node == null) {
+      return Optional.empty();
+    }
+    String nodeType = node.getType();
+    if ("local_variable_declaration".equals(nodeType) || "formal_parameter".equals(nodeType)) {
+      return Optional.of(ScopeType.LOCAL);
+    }
+    boolean isPublic = false;
+    for (int i = 0; i < node.getChildCount(); i++) {
+      TSNode child = node.getChild(i);
+      if ("modifiers".equals(child.getType())) {
+        for (int j = 0; j < child.getChildCount(); j++) {
+          if ("public".equals(child.getChild(j).getType())) {
+            isPublic = true;
+            break;
+          }
+        }
+      }
+      if (isPublic) {
+        break;
+      }
+    }
+    if ("class_declaration".equals(nodeType)
+        || "interface_declaration".equals(nodeType)
+        || "enum_declaration".equals(nodeType)
+        || "record_declaration".equals(nodeType)
+        || "annotation_type_declaration".equals(nodeType)) {
+      return isPublic ? Optional.of(ScopeType.PROJECT) : Optional.of(ScopeType.CLASS);
+    }
+    if ("field_declaration".equals(nodeType) || "method_declaration".equals(nodeType)) {
+      return isPublic ? Optional.of(ScopeType.PROJECT) : Optional.of(ScopeType.CLASS);
+    }
+    return Optional.empty();
+  }
+
+  public JavaIdentifierType getIdentifierType(TSNode node) {
+    if (!"identifier".equals(node.getType())) {
+      return null;
+    }
+    TSNode parent = node.getParent();
+    if (parent == null) {
+      return null;
+    }
+    String parentType = parent.getType();
+    switch (parentType) {
+      case "class_declaration":
+        return JavaIdentifierType.CLASS_NAME;
+      case "method_declaration":
+        return JavaIdentifierType.METHOD_NAME;
+      case "formal_parameter":
+        return JavaIdentifierType.FORMAL_PARAMETER_NAME;
+      case "variable_declarator":
+        TSNode grandParent = parent.getParent();
+        if (grandParent != null && "field_declaration".equals(grandParent.getType())) {
+          return JavaIdentifierType.FIELD_NAME;
+        }
+        return JavaIdentifierType.LOCAL_VARIABLE_NAME;
+      default:
+        return null;
+    }
+  }
+
+  public JavaIdentifierType getIdentifierType(TSFile file, int line, int column) {
+    TSNode node = file.getNodeFromPosition(line, column);
+    return this.getIdentifierType(node);
+  }
+
+  public List<TSNode> findClassUsages(Path rootDir, String className) {
+    List<TSNode> allUsages = new ArrayList<>();
+    List<TSFile> allJavaFiles;
+    try {
+      allJavaFiles = this.pathHelper.findFilesByExtention(rootDir, SupportedLanguage.JAVA);
+    } catch (IOException e) {
+      return allUsages;
+    }
+    for (TSFile file : allJavaFiles) {
+      allUsages.addAll(this.findValidatedUsagesInFile(file, className));
+    }
+    return allUsages;
+  }
+
+  private List<TSNode> findValidatedUsagesInFile(TSFile file, String className) {
+    List<TSNode> confirmedUsages = new ArrayList<>();
+    String usageQuery = "((identifier) @usage (#eq? @usage \"" + className + "\"))";
+    TSQuery query = new TSQuery(file.getParser().getLanguage(), usageQuery);
+    TSQueryCursor cursor = new TSQueryCursor();
+    cursor.exec(query, file.getTree().getRootNode());
+    TSQueryMatch match = new TSQueryMatch();
+    while (cursor.nextMatch(match)) {
+      for (TSQueryCapture capture : match.getCaptures()) {
+        TSNode potentialUsage = capture.getNode();
+        if (isUsageOfClass(file, potentialUsage, className)) {
+          confirmedUsages.add(potentialUsage);
+        }
+      }
+    }
+    return confirmedUsages;
+  }
+
+  private boolean isUsageOfClass(
+      TSFile fileContainingUsage, TSNode potentialUsage, String className) {
+    TSNode declarationNode =
+        fileContainingUsage.getNodeFromPosition(
+            potentialUsage.getStartPoint().getRow() + 1,
+            potentialUsage.getStartPoint().getColumn() + 1);
+    if ("class_declaration".equals(declarationNode.getType())) {
+      return true;
+    }
+    return false;
   }
 }
