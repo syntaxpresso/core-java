@@ -73,15 +73,16 @@ public class TSFile {
   /**
    * Updates a specific range of the source code and re-parses the content.
    *
-   * @param start The starting index of the text to replace.
-   * @param end The ending index of the text to replace.
+   * @param startByte The starting index of the text to replace.
+   * @param endByte The ending index of the text to replace.
    * @param newText The new text to insert.
    */
-  public void updateSourceCode(int start, int end, String newText) {
+  public void updateSourceCode(int startByte, int endByte, String newText) {
     if (this.sourceCode == null) {
       throw new IllegalStateException("Source code has not been initialized.");
     }
-    String newContent = new StringBuilder(this.sourceCode).replace(start, end, newText).toString();
+    String newContent =
+        new StringBuilder(this.sourceCode).replace(startByte, endByte, newText).toString();
     this.setData(newContent);
   }
 
@@ -214,6 +215,10 @@ public class TSFile {
       throw new IndexOutOfBoundsException("Invalid range specified for substring.");
     }
     return this.sourceCode.substring(startByte, endByte);
+  }
+
+  public String getTextFromNode(TSNode node) {
+    return this.getTextFromRange(node.getStartByte(), node.getEndByte());
   }
 
   /**
