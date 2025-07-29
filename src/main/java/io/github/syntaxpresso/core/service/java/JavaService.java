@@ -1,10 +1,10 @@
-package io.github.syntaxpresso.core.service;
+package io.github.syntaxpresso.core.service.java;
 
 import io.github.syntaxpresso.core.command.java.extra.SourceDirectoryType;
 import io.github.syntaxpresso.core.common.TSFile;
-import io.github.syntaxpresso.core.common.extra.SupportedLanguage;
 import io.github.syntaxpresso.core.service.extra.JavaIdentifierType;
 import io.github.syntaxpresso.core.service.extra.ScopeType;
+import io.github.syntaxpresso.core.service.java.extra.LocalVariableDeclarationService;
 import io.github.syntaxpresso.core.util.PathHelper;
 import java.io.File;
 import java.io.IOException;
@@ -30,6 +30,8 @@ import org.treesitter.TSQueryMatch;
 @RequiredArgsConstructor
 public class JavaService {
   private final PathHelper pathHelper;
+  private final LocalVariableDeclarationService localVariableDeclarationService =
+      new LocalVariableDeclarationService();
 
   public boolean isJavaProject(File rootDir) {
     if (rootDir == null || !rootDir.isDirectory()) {
@@ -204,23 +206,9 @@ public class JavaService {
     return this.getIdentifierType(node);
   }
 
-  public List<TSNode> findClassUsages(Path rootDir, String className) {
-    List<TSNode> allUsages = new ArrayList<>();
-    List<TSFile> allJavaFiles;
-    try {
-      allJavaFiles = this.pathHelper.findFilesByExtention(rootDir, SupportedLanguage.JAVA);
-    } catch (IOException e) {
-      return allUsages;
-    }
-    for (TSFile file : allJavaFiles) {
-      allUsages.addAll(this.findValidatedUsagesInFile(file, className));
-    }
-    return allUsages;
-  }
-
-  private List<TSNode> findValidatedUsagesInFile(TSFile file, String className) {
+  public List<TSNode> findClassUsagesInFile(TSFile file, String className) {
     List<TSNode> confirmedUsages = new ArrayList<>();
-    String usageQuery = "((identifier) @usage (#eq? @usage \"" + className + "\"))";
+    String usageQuery = "[(type_identifier) @usage (class_declaration name: (identifier) @usage)]";
     TSQuery query = new TSQuery(file.getParser().getLanguage(), usageQuery);
     TSQueryCursor cursor = new TSQueryCursor();
     cursor.exec(query, file.getTree().getRootNode());
@@ -228,23 +216,13 @@ public class JavaService {
     while (cursor.nextMatch(match)) {
       for (TSQueryCapture capture : match.getCaptures()) {
         TSNode potentialUsage = capture.getNode();
-        if (isUsageOfClass(file, potentialUsage, className)) {
+        String usageName =
+            file.getTextFromRange(potentialUsage.getStartByte(), potentialUsage.getEndByte());
+        if (usageName.equals(className)) {
           confirmedUsages.add(potentialUsage);
         }
       }
     }
     return confirmedUsages;
-  }
-
-  private boolean isUsageOfClass(
-      TSFile fileContainingUsage, TSNode potentialUsage, String className) {
-    TSNode declarationNode =
-        fileContainingUsage.getNodeFromPosition(
-            potentialUsage.getStartPoint().getRow() + 1,
-            potentialUsage.getStartPoint().getColumn() + 1);
-    if ("class_declaration".equals(declarationNode.getType())) {
-      return true;
-    }
-    return false;
   }
 }
