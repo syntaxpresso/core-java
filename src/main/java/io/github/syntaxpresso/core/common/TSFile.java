@@ -132,18 +132,15 @@ public class TSFile {
    * @throws IOException If an I/O error occurs.
    * @throws IllegalStateException If the file has not been saved to disk yet.
    */
-  public boolean move(File destination) throws IOException {
+  public void move(File destination) throws IOException {
     if (this.file == null) {
       throw new IllegalStateException("Cannot move a file that has not been saved yet.");
     }
     Path targetPath = destination.toPath();
-    // If the destination is a directory, keep the original file name.
     if (Files.isDirectory(targetPath)) {
       targetPath = targetPath.resolve(this.file.getName());
     }
-    Files.move(this.file.toPath(), targetPath);
     this.file = targetPath.toFile();
-    return true;
   }
 
   /**
@@ -151,21 +148,23 @@ public class TSFile {
    *
    * @param newName The new name for the file.
    * @return true if the rename is successful.
-   * @throws IOException If an I/O error occurs.
    * @throws IllegalStateException If the file has not been saved to disk yet.
    */
-  public boolean rename(String newName) throws IOException {
+  public void rename(String newName) {
     if (this.file == null) {
       throw new IllegalStateException("Cannot rename a file that has not been saved yet.");
     }
     Path parentDir = this.file.toPath().getParent();
     if (parentDir == null) {
-      throw new IOException("Cannot determine the parent directory of the file to rename.");
+      throw new IllegalStateException("Unable to get parent directory");
     }
-    Path targetPath = parentDir.resolve(newName);
-    Files.move(this.file.toPath(), targetPath);
+    Path targetPath =
+        parentDir.resolve(
+            newName
+                + SupportedLanguage.fromLanguage(this.parser.getLanguage())
+                    .get()
+                    .getFileExtension());
     this.file = targetPath.toFile();
-    return true;
   }
 
   /**
