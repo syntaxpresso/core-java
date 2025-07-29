@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import io.github.syntaxpresso.core.command.java.extra.SourceDirectoryType;
 import io.github.syntaxpresso.core.common.TSFile;
 import io.github.syntaxpresso.core.common.extra.SupportedLanguage;
+import io.github.syntaxpresso.core.service.java.JavaService;
 import io.github.syntaxpresso.core.util.PathHelper;
 import java.io.IOException;
 import java.nio.file.Files;
