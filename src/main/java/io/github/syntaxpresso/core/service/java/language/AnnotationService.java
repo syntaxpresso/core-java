@@ -278,7 +278,6 @@ public class AnnotationService {
     if (Strings.isNullOrEmpty(keyName)) {
       return Optional.empty();
     }
-
     List<Map<String, TSNode>> annotationInfo = this.getAnnotationNodeInfo(tsFile, annotationNode);
     for (Map<String, TSNode> map : annotationInfo) {
       TSNode keyNode = map.get(AnnotationCapture.KEY.getCaptureName());
@@ -334,7 +333,6 @@ public class AnnotationService {
     for (Map<String, TSNode> map : annotationInfo) {
       TSNode keyNode = map.get(AnnotationCapture.KEY.getCaptureName());
       TSNode valueNode = map.get(AnnotationCapture.VALUE.getCaptureName());
-
       if (keyNode != null && valueNode != null) {
         String keyText = tsFile.getTextFromNode(keyNode);
         argumentMap.put(keyText, new AnnotationArgument(keyNode, valueNode));
@@ -532,5 +530,204 @@ public class AnnotationService {
     }
     tsFile.updateSourceCode(
         insertionPoint.getInsertByte(), insertionPoint.getInsertByte(), insertText);
+  }
+
+  /**
+   * Adds an argument to an existing annotation. Converts marker annotations to regular annotations
+   * if necessary.
+   *
+   * <p>This method adds a new key-value argument to an existing annotation. If the annotation is
+   * currently a marker annotation (e.g., {@code @Column}), it will be converted to a regular
+   * annotation with arguments (e.g., {@code @Column(name = "test")}). If the annotation already has
+   * arguments, the new argument will be appended to the existing ones.
+   *
+   * <p>Usage example:
+   *
+   * <pre>
+   * // Convert @Column to @Column(name = "test")
+   * Optional&lt;TSNode&gt; columnAnnotation = service.findAnnotationByName(tsFile, fieldNode, "Column");
+   * if (columnAnnotation.isPresent()) {
+   *   service.addAnnotationArgument(tsFile, columnAnnotation.get(), "name", "\"test\"");
+   * }
+   *
+   * // Add another argument: @Column(name = "test", nullable = false)
+   * service.addAnnotationArgument(tsFile, columnAnnotation.get(), "nullable", "false");
+   * </pre>
+   *
+   * @param tsFile The {@link TSFile} containing the Java source code to modify
+   * @param annotationNode The annotation node to add the argument to
+   * @param key The argument key name (e.g., "name", "nullable")
+   * @param value The argument value (e.g., "\"test\"", "false", "true")
+   */
+  public void addAnnotationArgument(
+      TSFile tsFile, TSNode annotationNode, String key, String value) {
+    if (tsFile == null
+        || tsFile.getTree() == null
+        || annotationNode == null
+        || Strings.isNullOrEmpty(key)
+        || Strings.isNullOrEmpty(value)) {
+      return;
+    }
+    String nodeType = annotationNode.getType();
+    if (!nodeType.equals("annotation") && !nodeType.equals("marker_annotation")) {
+      return;
+    }
+    String argumentPair = key + " = " + value;
+    if (nodeType.equals("marker_annotation")) {
+      Optional<TSNode> nameNode = this.getAnnotationNameNode(tsFile, annotationNode);
+      if (nameNode.isEmpty()) {
+        return;
+      }
+      int insertPosition = nameNode.get().getEndByte();
+      String insertText = "(" + argumentPair + ")";
+      tsFile.updateSourceCode(insertPosition, insertPosition, insertText);
+    } else {
+      List<TSNode> existingArguments = this.getAnnotationArgumentPairs(tsFile, annotationNode);
+      if (existingArguments.isEmpty()) {
+        Optional<TSNode> nameNode = this.getAnnotationNameNode(tsFile, annotationNode);
+        if (nameNode.isEmpty()) {
+          return;
+        }
+        int insertPosition = nameNode.get().getEndByte();
+        String insertText = "(" + argumentPair + ")";
+        tsFile.updateSourceCode(insertPosition, insertPosition, insertText);
+      } else {
+        TSNode lastArgument = existingArguments.get(existingArguments.size() - 1);
+        int insertPosition = lastArgument.getEndByte();
+        String insertText = ", " + argumentPair;
+        tsFile.updateSourceCode(insertPosition, insertPosition, insertText);
+      }
+    }
+  }
+
+  /**
+   * Removes an argument from an existing annotation by its key name.
+   *
+   * <p>This method removes a specific argument from an annotation based on the provided key name.
+   * If the annotation becomes empty after removing the argument (no remaining arguments), it will
+   * be converted to a marker annotation. If the key is not found, no changes are made.
+   *
+   * <p>Usage example:
+   *
+   * <pre>
+   * // Remove "nullable" argument from @Column(name = "test", nullable = false)
+   * // Result: @Column(name = "test")
+   * Optional&lt;TSNode&gt; columnAnnotation = service.findAnnotationByName(tsFile, fieldNode, "Column");
+   * if (columnAnnotation.isPresent()) {
+   *   service.removeAnnotationArgument(tsFile, columnAnnotation.get(), "nullable");
+   * }
+   *
+   * // Remove "name" argument from @Column(name = "test")
+   * // Result: @Column (marker annotation)
+   * service.removeAnnotationArgument(tsFile, columnAnnotation.get(), "name");
+   * </pre>
+   *
+   * @param tsFile The {@link TSFile} containing the Java source code to modify
+   * @param annotationNode The annotation node to remove the argument from
+   * @param key The argument key name to remove
+   */
+  public void removeAnnotationArgument(TSFile tsFile, TSNode annotationNode, String key) {
+    if (tsFile == null
+        || tsFile.getTree() == null
+        || annotationNode == null
+        || Strings.isNullOrEmpty(key)) {
+      return;
+    }
+    String nodeType = annotationNode.getType();
+    if (!nodeType.equals("annotation")) {
+      return;
+    }
+    List<Map<String, TSNode>> annotationInfo = this.getAnnotationNodeInfo(tsFile, annotationNode);
+    List<TSNode> argumentPairs = new ArrayList<>();
+    TSNode targetPair = null;
+
+    for (Map<String, TSNode> map : annotationInfo) {
+      TSNode keyNode = map.get(AnnotationCapture.KEY.getCaptureName());
+      TSNode pairNode = map.get(AnnotationCapture.ARGUMENT_PAIR.getCaptureName());
+      if (keyNode != null && pairNode != null) {
+        String keyText = tsFile.getTextFromNode(keyNode);
+        argumentPairs.add(pairNode);
+        if (key.equals(keyText)) {
+          targetPair = pairNode;
+        }
+      }
+    }
+    if (targetPair == null) {
+      return;
+    }
+    if (argumentPairs.size() == 1) {
+      String queryString =
+          """
+          (annotation
+            name: (_) @name
+            arguments: (annotation_argument_list) @args
+          )
+          """;
+      Optional<Map<String, TSNode>> captureMap =
+          tsFile
+              .query(queryString)
+              .within(annotationNode)
+              .returningAllCaptures()
+              .execute()
+              .firstCaptureOptional();
+      Optional<TSNode> argsNode = captureMap.map(map -> map.get("args"));
+      if (argsNode.isPresent()) {
+        tsFile.updateSourceCode(argsNode.get().getStartByte(), argsNode.get().getEndByte(), "");
+      }
+    } else {
+      int targetIndex = argumentPairs.indexOf(targetPair);
+      if (targetIndex == 0 && argumentPairs.size() > 1) {
+        TSNode nextPair = argumentPairs.get(1);
+        tsFile.updateSourceCode(targetPair.getStartByte(), nextPair.getStartByte(), "");
+      } else {
+        TSNode prevPair = argumentPairs.get(targetIndex - 1);
+        tsFile.updateSourceCode(prevPair.getEndByte(), targetPair.getEndByte(), "");
+      }
+    }
+  }
+
+  /**
+   * Updates the value of an existing annotation argument.
+   *
+   * <p>This method modifies the value of an existing annotation argument identified by its key
+   * name. If the key is not found, no changes are made to the annotation.
+   *
+   * <p>Usage example:
+   *
+   * <pre>
+   * // Update name value in @Column(name = "old_name", nullable = false)
+   * // Result: @Column(name = "new_name", nullable = false)
+   * Optional&lt;TSNode&gt; columnAnnotation = service.findAnnotationByName(tsFile, fieldNode, "Column");
+   * if (columnAnnotation.isPresent()) {
+   *   service.updateAnnotationArgument(tsFile, columnAnnotation.get(), "name", "\"new_name\"");
+   * }
+   *
+   * // Update boolean value
+   * service.updateAnnotationArgument(tsFile, columnAnnotation.get(), "nullable", "true");
+   * </pre>
+   *
+   * @param tsFile The {@link TSFile} containing the Java source code to modify
+   * @param annotationNode The annotation node containing the argument to update
+   * @param key The argument key name to update
+   * @param newValue The new value for the argument
+   */
+  public void updateAnnotationArgument(
+      TSFile tsFile, TSNode annotationNode, String key, String newValue) {
+    if (tsFile == null
+        || tsFile.getTree() == null
+        || annotationNode == null
+        || Strings.isNullOrEmpty(key)
+        || Strings.isNullOrEmpty(newValue)) {
+      return;
+    }
+    String nodeType = annotationNode.getType();
+    if (!nodeType.equals("annotation")) {
+      return;
+    }
+    Optional<TSNode> valueNode = this.getAnnotationValueByKey(tsFile, annotationNode, key);
+    if (valueNode.isPresent()) {
+      tsFile.updateSourceCode(
+          valueNode.get().getStartByte(), valueNode.get().getEndByte(), newValue);
+    }
   }
 }

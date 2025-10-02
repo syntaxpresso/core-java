@@ -472,6 +472,360 @@ class AnnotationServiceTest {
   }
 
   @Nested
+  @DisplayName("Add Annotation Argument Tests")
+  class AddAnnotationArgumentTests {
+
+    @Test
+    @DisplayName("should convert marker annotation to annotation with arguments")
+    void shouldConvertMarkerAnnotationToAnnotationWithArguments() {
+      String code = "@Column public String name;";
+      TSFile tsFile = new TSFile(SupportedLanguage.JAVA, code);
+      TSNode annotationNode = tsFile.query("(marker_annotation) @annotation").execute().firstNode();
+
+      String originalCode = tsFile.getSourceCode();
+      annotationService.addAnnotationArgument(tsFile, annotationNode, "name", "\"test\"");
+      String updatedCode = tsFile.getSourceCode();
+
+      assertTrue(updatedCode.contains("@Column(name = \"test\")"));
+      assertFalse(updatedCode.equals(originalCode));
+    }
+
+    @Test
+    @DisplayName("should add argument to existing annotation with arguments")
+    void shouldAddArgumentToExistingAnnotationWithArguments() {
+      String code = "@Column(name = \"test\") public String name;";
+      TSFile tsFile = new TSFile(SupportedLanguage.JAVA, code);
+      TSNode annotationNode = tsFile.query("(annotation) @annotation").execute().firstNode();
+
+      String originalCode = tsFile.getSourceCode();
+      annotationService.addAnnotationArgument(tsFile, annotationNode, "nullable", "false");
+      String updatedCode = tsFile.getSourceCode();
+
+      assertTrue(updatedCode.contains("@Column(name = \"test\", nullable = false)"));
+      assertFalse(updatedCode.equals(originalCode));
+    }
+
+    @Test
+    @DisplayName("should add multiple arguments to marker annotation")
+    void shouldAddMultipleArgumentsToMarkerAnnotation() {
+      String code = "@Entity public class User {}";
+      TSFile tsFile = new TSFile(SupportedLanguage.JAVA, code);
+      TSNode annotationNode = tsFile.query("(marker_annotation) @annotation").execute().firstNode();
+
+      annotationService.addAnnotationArgument(tsFile, annotationNode, "name", "\"users\"");
+      
+      // Re-query the annotation node after the first modification since the tree is updated
+      TSNode updatedAnnotationNode = tsFile.query("(annotation) @annotation").execute().firstNode();
+      annotationService.addAnnotationArgument(tsFile, updatedAnnotationNode, "schema", "\"public\"");
+      
+      String updatedCode = tsFile.getSourceCode();
+      assertTrue(updatedCode.contains("@Entity(name = \"users\", schema = \"public\")"));
+    }
+
+    @Test
+    @DisplayName("should handle null inputs gracefully")
+    void shouldHandleNullInputsGracefully() {
+      String code = "@Column public String name;";
+      TSFile tsFile = new TSFile(SupportedLanguage.JAVA, code);
+      TSNode annotationNode = tsFile.query("(marker_annotation) @annotation").execute().firstNode();
+      String originalCode = tsFile.getSourceCode();
+
+      annotationService.addAnnotationArgument(null, annotationNode, "name", "\"test\"");
+      annotationService.addAnnotationArgument(tsFile, null, "name", "\"test\"");
+      annotationService.addAnnotationArgument(tsFile, annotationNode, null, "\"test\"");
+      annotationService.addAnnotationArgument(tsFile, annotationNode, "", "\"test\"");
+      annotationService.addAnnotationArgument(tsFile, annotationNode, "name", null);
+      annotationService.addAnnotationArgument(tsFile, annotationNode, "name", "");
+
+      String finalCode = tsFile.getSourceCode();
+      assertEquals(originalCode, finalCode);
+    }
+
+    @Test
+    @DisplayName("should reject unsupported node types")
+    void shouldRejectUnsupportedNodeTypes() {
+      String code = "public class User { String name; }";
+      TSFile tsFile = new TSFile(SupportedLanguage.JAVA, code);
+      TSNode identifierNode = tsFile.query("(identifier) @id").execute().firstNode();
+      String originalCode = tsFile.getSourceCode();
+
+      annotationService.addAnnotationArgument(tsFile, identifierNode, "name", "\"test\"");
+
+      String finalCode = tsFile.getSourceCode();
+      assertEquals(originalCode, finalCode);
+    }
+
+    @Test
+    @DisplayName("should handle complex annotation arguments")
+    void shouldHandleComplexAnnotationArguments() {
+      String code = "@Table public class User {}";
+      TSFile tsFile = new TSFile(SupportedLanguage.JAVA, code);
+      TSNode annotationNode = tsFile.query("(marker_annotation) @annotation").execute().firstNode();
+
+      annotationService.addAnnotationArgument(tsFile, annotationNode, "uniqueConstraints", "@UniqueConstraint(columnNames = {\"email\"})");
+      String updatedCode = tsFile.getSourceCode();
+
+      assertTrue(updatedCode.contains("@Table(uniqueConstraints = @UniqueConstraint(columnNames = {\"email\"}))"));
+    }
+  }
+
+  @Nested
+  @DisplayName("Remove Annotation Argument Tests")
+  class RemoveAnnotationArgumentTests {
+
+    @Test
+    @DisplayName("should remove single argument and convert to marker annotation")
+    void shouldRemoveSingleArgumentAndConvertToMarkerAnnotation() {
+      String code = "@Column(name = \"test\") public String name;";
+      TSFile tsFile = new TSFile(SupportedLanguage.JAVA, code);
+      TSNode annotationNode = tsFile.query("(annotation) @annotation").execute().firstNode();
+
+      annotationService.removeAnnotationArgument(tsFile, annotationNode, "name");
+      String updatedCode = tsFile.getSourceCode();
+
+      assertTrue(updatedCode.contains("@Column public String name;"));
+      assertFalse(updatedCode.contains("name = \"test\""));
+    }
+
+    @Test
+    @DisplayName("should remove first argument from multiple arguments")
+    void shouldRemoveFirstArgumentFromMultipleArguments() {
+      String code = "@Column(name = \"test\", nullable = false, length = 255) public String name;";
+      TSFile tsFile = new TSFile(SupportedLanguage.JAVA, code);
+      TSNode annotationNode = tsFile.query("(annotation) @annotation").execute().firstNode();
+
+      annotationService.removeAnnotationArgument(tsFile, annotationNode, "name");
+      String updatedCode = tsFile.getSourceCode();
+
+      assertTrue(updatedCode.contains("@Column(nullable = false, length = 255)"));
+      assertFalse(updatedCode.contains("name = \"test\""));
+    }
+
+    @Test
+    @DisplayName("should remove middle argument from multiple arguments")
+    void shouldRemoveMiddleArgumentFromMultipleArguments() {
+      String code = "@Column(name = \"test\", nullable = false, length = 255) public String name;";
+      TSFile tsFile = new TSFile(SupportedLanguage.JAVA, code);
+      TSNode annotationNode = tsFile.query("(annotation) @annotation").execute().firstNode();
+
+      annotationService.removeAnnotationArgument(tsFile, annotationNode, "nullable");
+      String updatedCode = tsFile.getSourceCode();
+
+      assertTrue(updatedCode.contains("@Column(name = \"test\", length = 255)"));
+      assertFalse(updatedCode.contains("nullable = false"));
+    }
+
+    @Test
+    @DisplayName("should remove last argument from multiple arguments")
+    void shouldRemoveLastArgumentFromMultipleArguments() {
+      String code = "@Column(name = \"test\", nullable = false, length = 255) public String name;";
+      TSFile tsFile = new TSFile(SupportedLanguage.JAVA, code);
+      TSNode annotationNode = tsFile.query("(annotation) @annotation").execute().firstNode();
+
+      annotationService.removeAnnotationArgument(tsFile, annotationNode, "length");
+      String updatedCode = tsFile.getSourceCode();
+
+      assertTrue(updatedCode.contains("@Column(name = \"test\", nullable = false)"));
+      assertFalse(updatedCode.contains("length = 255"));
+    }
+
+    @Test
+    @DisplayName("should handle non-existent argument key")
+    void shouldHandleNonExistentArgumentKey() {
+      String code = "@Column(name = \"test\") public String name;";
+      TSFile tsFile = new TSFile(SupportedLanguage.JAVA, code);
+      TSNode annotationNode = tsFile.query("(annotation) @annotation").execute().firstNode();
+      String originalCode = tsFile.getSourceCode();
+
+      annotationService.removeAnnotationArgument(tsFile, annotationNode, "nonexistent");
+
+      String finalCode = tsFile.getSourceCode();
+      assertEquals(originalCode, finalCode);
+    }
+
+    @Test
+    @DisplayName("should handle null inputs gracefully")
+    void shouldHandleNullInputsGracefully() {
+      String code = "@Column(name = \"test\") public String name;";
+      TSFile tsFile = new TSFile(SupportedLanguage.JAVA, code);
+      TSNode annotationNode = tsFile.query("(annotation) @annotation").execute().firstNode();
+      String originalCode = tsFile.getSourceCode();
+
+      annotationService.removeAnnotationArgument(null, annotationNode, "name");
+      annotationService.removeAnnotationArgument(tsFile, null, "name");
+      annotationService.removeAnnotationArgument(tsFile, annotationNode, null);
+      annotationService.removeAnnotationArgument(tsFile, annotationNode, "");
+
+      String finalCode = tsFile.getSourceCode();
+      assertEquals(originalCode, finalCode);
+    }
+
+    @Test
+    @DisplayName("should reject marker annotations")
+    void shouldRejectMarkerAnnotations() {
+      String code = "@Override public void method() {}";
+      TSFile tsFile = new TSFile(SupportedLanguage.JAVA, code);
+      TSNode annotationNode = tsFile.query("(marker_annotation) @annotation").execute().firstNode();
+      String originalCode = tsFile.getSourceCode();
+
+      annotationService.removeAnnotationArgument(tsFile, annotationNode, "name");
+
+      String finalCode = tsFile.getSourceCode();
+      assertEquals(originalCode, finalCode);
+    }
+
+    @Test
+    @DisplayName("should reject unsupported node types")
+    void shouldRejectUnsupportedNodeTypes() {
+      String code = "public class User { String name; }";
+      TSFile tsFile = new TSFile(SupportedLanguage.JAVA, code);
+      TSNode identifierNode = tsFile.query("(identifier) @id").execute().firstNode();
+      String originalCode = tsFile.getSourceCode();
+
+      annotationService.removeAnnotationArgument(tsFile, identifierNode, "name");
+
+      String finalCode = tsFile.getSourceCode();
+      assertEquals(originalCode, finalCode);
+    }
+  }
+
+  @Nested
+  @DisplayName("Update Annotation Argument Tests")
+  class UpdateAnnotationArgumentTests {
+
+    @Test
+    @DisplayName("should update existing argument value")
+    void shouldUpdateExistingArgumentValue() {
+      String code = "@Column(name = \"old_name\") public String name;";
+      TSFile tsFile = new TSFile(SupportedLanguage.JAVA, code);
+      TSNode annotationNode = tsFile.query("(annotation) @annotation").execute().firstNode();
+
+      annotationService.updateAnnotationArgument(tsFile, annotationNode, "name", "\"new_name\"");
+      String updatedCode = tsFile.getSourceCode();
+
+      assertTrue(updatedCode.contains("@Column(name = \"new_name\")"));
+      assertFalse(updatedCode.contains("old_name"));
+    }
+
+    @Test
+    @DisplayName("should update one argument while preserving others")
+    void shouldUpdateOneArgumentWhilePreservingOthers() {
+      String code = "@Column(name = \"test\", nullable = false, length = 255) public String name;";
+      TSFile tsFile = new TSFile(SupportedLanguage.JAVA, code);
+      TSNode annotationNode = tsFile.query("(annotation) @annotation").execute().firstNode();
+
+      annotationService.updateAnnotationArgument(tsFile, annotationNode, "nullable", "true");
+      String updatedCode = tsFile.getSourceCode();
+
+      assertTrue(updatedCode.contains("@Column(name = \"test\", nullable = true, length = 255)"));
+      assertFalse(updatedCode.contains("nullable = false"));
+    }
+
+    @Test
+    @DisplayName("should update boolean argument")
+    void shouldUpdateBooleanArgument() {
+      String code = "@Transactional(readOnly = false) public void method() {}";
+      TSFile tsFile = new TSFile(SupportedLanguage.JAVA, code);
+      TSNode annotationNode = tsFile.query("(annotation) @annotation").execute().firstNode();
+
+      annotationService.updateAnnotationArgument(tsFile, annotationNode, "readOnly", "true");
+      String updatedCode = tsFile.getSourceCode();
+
+      assertTrue(updatedCode.contains("@Transactional(readOnly = true)"));
+      assertFalse(updatedCode.contains("readOnly = false"));
+    }
+
+    @Test
+    @DisplayName("should update numeric argument")
+    void shouldUpdateNumericArgument() {
+      String code = "@Column(length = 255) public String name;";
+      TSFile tsFile = new TSFile(SupportedLanguage.JAVA, code);
+      TSNode annotationNode = tsFile.query("(annotation) @annotation").execute().firstNode();
+
+      annotationService.updateAnnotationArgument(tsFile, annotationNode, "length", "500");
+      String updatedCode = tsFile.getSourceCode();
+
+      assertTrue(updatedCode.contains("@Column(length = 500)"));
+      assertFalse(updatedCode.contains("length = 255"));
+    }
+
+    @Test
+    @DisplayName("should handle non-existent argument key")
+    void shouldHandleNonExistentArgumentKey() {
+      String code = "@Column(name = \"test\") public String name;";
+      TSFile tsFile = new TSFile(SupportedLanguage.JAVA, code);
+      TSNode annotationNode = tsFile.query("(annotation) @annotation").execute().firstNode();
+      String originalCode = tsFile.getSourceCode();
+
+      annotationService.updateAnnotationArgument(tsFile, annotationNode, "nonexistent", "\"value\"");
+
+      String finalCode = tsFile.getSourceCode();
+      assertEquals(originalCode, finalCode);
+    }
+
+    @Test
+    @DisplayName("should handle null inputs gracefully")
+    void shouldHandleNullInputsGracefully() {
+      String code = "@Column(name = \"test\") public String name;";
+      TSFile tsFile = new TSFile(SupportedLanguage.JAVA, code);
+      TSNode annotationNode = tsFile.query("(annotation) @annotation").execute().firstNode();
+      String originalCode = tsFile.getSourceCode();
+
+      annotationService.updateAnnotationArgument(null, annotationNode, "name", "\"new_value\"");
+      annotationService.updateAnnotationArgument(tsFile, null, "name", "\"new_value\"");
+      annotationService.updateAnnotationArgument(tsFile, annotationNode, null, "\"new_value\"");
+      annotationService.updateAnnotationArgument(tsFile, annotationNode, "", "\"new_value\"");
+      annotationService.updateAnnotationArgument(tsFile, annotationNode, "name", null);
+      annotationService.updateAnnotationArgument(tsFile, annotationNode, "name", "");
+
+      String finalCode = tsFile.getSourceCode();
+      assertEquals(originalCode, finalCode);
+    }
+
+    @Test
+    @DisplayName("should reject marker annotations")
+    void shouldRejectMarkerAnnotations() {
+      String code = "@Override public void method() {}";
+      TSFile tsFile = new TSFile(SupportedLanguage.JAVA, code);
+      TSNode annotationNode = tsFile.query("(marker_annotation) @annotation").execute().firstNode();
+      String originalCode = tsFile.getSourceCode();
+
+      annotationService.updateAnnotationArgument(tsFile, annotationNode, "name", "\"value\"");
+
+      String finalCode = tsFile.getSourceCode();
+      assertEquals(originalCode, finalCode);
+    }
+
+    @Test
+    @DisplayName("should reject unsupported node types")
+    void shouldRejectUnsupportedNodeTypes() {
+      String code = "public class User { String name; }";
+      TSFile tsFile = new TSFile(SupportedLanguage.JAVA, code);
+      TSNode identifierNode = tsFile.query("(identifier) @id").execute().firstNode();
+      String originalCode = tsFile.getSourceCode();
+
+      annotationService.updateAnnotationArgument(tsFile, identifierNode, "name", "\"value\"");
+
+      String finalCode = tsFile.getSourceCode();
+      assertEquals(originalCode, finalCode);
+    }
+
+    @Test
+    @DisplayName("should update complex argument values")
+    void shouldUpdateComplexArgumentValues() {
+      String code = "@JoinColumn(foreignKey = @ForeignKey(name = \"fk_user\")) public User user;";
+      TSFile tsFile = new TSFile(SupportedLanguage.JAVA, code);
+      TSNode annotationNode = tsFile.query("(annotation) @annotation").execute().firstNode();
+
+      annotationService.updateAnnotationArgument(tsFile, annotationNode, "foreignKey", "@ForeignKey(name = \"fk_user_id\")");
+      String updatedCode = tsFile.getSourceCode();
+
+      assertTrue(updatedCode.contains("@JoinColumn(foreignKey = @ForeignKey(name = \"fk_user_id\"))"));
+      assertFalse(updatedCode.contains("fk_user\""));
+    }
+  }
+
+  @Nested
   @DisplayName("Error Handling Tests")
   class ErrorHandlingTests {
 
