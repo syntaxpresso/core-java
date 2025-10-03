@@ -1,16 +1,67 @@
 package io.github.syntaxpresso.core.service.java.language;
 
 import com.google.common.base.Strings;
+import io.github.syntaxpresso.core.command.extra.JavaFieldModifier;
+import io.github.syntaxpresso.core.command.extra.JavaVisibilityModifier;
 import io.github.syntaxpresso.core.common.TSFile;
 import io.github.syntaxpresso.core.service.java.language.extra.FieldCapture;
+import io.github.syntaxpresso.core.service.java.language.extra.FieldInsertionPoint;
+import io.github.syntaxpresso.core.service.java.language.extra.FieldInsertionPoint.FieldInsertionPosition;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.treesitter.TSNode;
 
 public class FieldDeclarationService {
+
+  /**
+   * Builds field declaration text with proper formatting.
+   *
+   * @param fieldName The name of the field
+   * @param fieldType The type of the field
+   * @param visibility The visibility modifier
+   * @param modifiers Set of additional field modifiers
+   * @param initialization Optional initialization value
+   * @return The formatted field declaration text
+   */
+  private String buildFieldDeclarationText(
+      String fieldName,
+      String fieldType,
+      JavaVisibilityModifier visibility,
+      Set<JavaFieldModifier> modifiers,
+      String initialization) {
+    StringBuilder declaration = new StringBuilder();
+    declaration.append("  ");
+    if (visibility != null && visibility.hasKeyword()) {
+      declaration.append(visibility.getKeyword()).append(" ");
+    }
+    if (modifiers != null && !modifiers.isEmpty()) {
+      // Ensure consistent ordering of modifiers: static, final, transient, volatile
+      List<JavaFieldModifier> orderedModifiers = modifiers.stream()
+          .sorted((m1, m2) -> {
+            List<JavaFieldModifier> order = List.of(
+                JavaFieldModifier.STATIC, 
+                JavaFieldModifier.FINAL, 
+                JavaFieldModifier.TRANSIENT, 
+                JavaFieldModifier.VOLATILE
+            );
+            return Integer.compare(order.indexOf(m1), order.indexOf(m2));
+          })
+          .toList();
+      for (JavaFieldModifier modifier : orderedModifiers) {
+        declaration.append(modifier.toString().toLowerCase()).append(" ");
+      }
+    }
+    declaration.append(fieldType).append(" ").append(fieldName);
+    if (initialization != null && !initialization.trim().isEmpty()) {
+      declaration.append(" = ").append(initialization);
+    }
+    declaration.append(";");
+    return declaration.toString();
+  }
 
   /**
    * Extracts field declaration information from a field node using tree-sitter queries.
@@ -484,5 +535,321 @@ public class FieldDeclarationService {
             """,
             fieldDeclaratorType);
     return tsFile.query(queryString).within(classDeclarationNode).execute().nodes();
+  }
+
+  /**
+   * Determines the optimal insertion position for adding a new field declaration to a class.
+   *
+   * <p>This method calculates the byte position where a new field should be inserted based on the
+   * specified insertion strategy and existing class structure. It supports different insertion
+   * positions to accommodate various field placement preferences.
+   *
+   * <p>Supported insertion positions:
+   *
+   * <ul>
+   *   <li>{@code AFTER_LAST_FIELD}: Inserts after the last existing field declaration
+   *   <li>{@code BEFORE_FIRST_METHOD}: Inserts before the first method declaration
+   *   <li>{@code END_OF_CLASS_BODY}: Inserts at the end of the class body
+   * </ul>
+   *
+   * <p>Usage example:
+   *
+   * <pre>
+   * TSNode classNode = classService.findClassByName(tsFile, "MyClass").get();
+   * FieldInsertionPoint insertionPoint = service.getFieldInsertionPosition(
+   *     tsFile, classNode, FieldInsertionPosition.AFTER_LAST_FIELD);
+   *
+   * if (insertionPoint != null) {
+   *   int bytePosition = insertionPoint.getInsertByte();
+   *   FieldInsertionPosition position = insertionPoint.getPosition();
+   *   // Use insertion point to add field
+   * }
+   * </pre>
+   *
+   * @param tsFile The {@link TSFile} containing the Java source code
+   * @param classDeclarationNode The class declaration {@link TSNode} to add field to
+   * @param insertionPosition The desired insertion position strategy
+   * @return {@link FieldInsertionPoint} containing position details, or null if invalid input
+   */
+  public FieldInsertionPoint getFieldInsertionPosition(
+      TSFile tsFile, TSNode classDeclarationNode, FieldInsertionPosition insertionPosition) {
+    if (tsFile == null || tsFile.getTree() == null || classDeclarationNode == null) {
+      return null;
+    }
+    if (!classDeclarationNode.getType().equals("class_declaration")) {
+      return null;
+    }
+
+    List<TSNode> allFields = this.getAllFieldDeclarationNodes(tsFile, classDeclarationNode);
+    List<TSNode> allMethods = this.getAllMethodDeclarationNodes(tsFile, classDeclarationNode);
+
+    FieldInsertionPoint fieldInsertionPoint = new FieldInsertionPoint();
+    fieldInsertionPoint.setPosition(insertionPosition);
+
+    switch (insertionPosition) {
+      case AFTER_LAST_FIELD:
+        if (!allFields.isEmpty()) {
+          fieldInsertionPoint.setBreakLineBefore(true);
+          fieldInsertionPoint.setInsertByte(allFields.getLast().getEndByte());
+        } else {
+          // No fields exist, insert at beginning of class body with proper formatting
+          TSNode classBody = this.getClassBodyNode(tsFile, classDeclarationNode);
+          if (classBody != null) {
+            fieldInsertionPoint.setBreakLineBefore(true);
+            fieldInsertionPoint.setBreakLineAfter(true);
+            fieldInsertionPoint.setInsertByte(classBody.getStartByte() + 1); // After opening brace
+          }
+        }
+        break;
+
+      case BEFORE_FIRST_METHOD:
+        if (!allMethods.isEmpty()) {
+          fieldInsertionPoint.setBreakLineAfter(true);
+          fieldInsertionPoint.setInsertByte(allMethods.get(0).getStartByte());
+        } else {
+          // No methods exist, fallback to end of class body
+          TSNode classBody = this.getClassBodyNode(tsFile, classDeclarationNode);
+          if (classBody != null) {
+            fieldInsertionPoint.setBreakLineBefore(true);
+            fieldInsertionPoint.setInsertByte(classBody.getEndByte() - 1); // Before closing brace
+          }
+        }
+        break;
+
+      case END_OF_CLASS_BODY:
+        TSNode classBody = this.getClassBodyNode(tsFile, classDeclarationNode);
+        if (classBody != null) {
+          fieldInsertionPoint.setBreakLineBefore(true);
+          fieldInsertionPoint.setInsertByte(classBody.getEndByte() - 1); // Before closing brace
+        }
+        break;
+    }
+
+    return fieldInsertionPoint;
+  }
+
+  /**
+   * Gets the class body node from a class declaration.
+   *
+   * @param tsFile The {@link TSFile} containing the source code
+   * @param classDeclarationNode The class declaration node
+   * @return The class body node, or null if not found
+   */
+  private TSNode getClassBodyNode(TSFile tsFile, TSNode classDeclarationNode) {
+    String queryString =
+        """
+        (class_declaration
+          body: (class_body) @body
+        )
+        """;
+    return tsFile
+        .query(queryString)
+        .within(classDeclarationNode)
+        .execute()
+        .firstNodeOptional()
+        .orElse(null);
+  }
+
+  /**
+   * Gets all method declaration nodes within a class declaration.
+   *
+   * @param tsFile The {@link TSFile} containing the source code
+   * @param classDeclarationNode The class declaration node
+   * @return List of method declaration nodes
+   */
+  private List<TSNode> getAllMethodDeclarationNodes(TSFile tsFile, TSNode classDeclarationNode) {
+    if (tsFile == null
+        || tsFile.getTree() == null
+        || !classDeclarationNode.getType().equals("class_declaration")) {
+      return Collections.emptyList();
+    }
+    String queryString =
+        """
+        (class_declaration
+          body: (class_body
+            (method_declaration) @method
+          )
+        )
+        """;
+    return tsFile.query(queryString).within(classDeclarationNode).execute().nodes();
+  }
+
+  /**
+   * Adds a new field declaration to a Java class at the specified insertion point.
+   *
+   * <p>This method inserts a new field into the source code at the position determined by the
+   * provided {@link FieldInsertionPoint}. The field declaration is constructed with appropriate
+   * modifiers, type, name, and optional initialization. The method supports adding fields with
+   * various visibility levels and field modifiers.
+   *
+   * <p>The field declaration format follows the pattern: {@code [visibility] [modifiers] type
+   * name[= initialization];}
+   *
+   * <p>Usage example:
+   *
+   * <pre>
+   * // Add a private String field
+   * TSNode classNode = classService.findClassByName(tsFile, "MyClass").get();
+   * FieldInsertionPoint insertionPoint = service.getFieldInsertionPosition(
+   *     tsFile, classNode, FieldInsertionPosition.AFTER_LAST_FIELD);
+   *
+   * service.addFieldDeclaration(tsFile, classNode, insertionPoint,
+   *     JavaVisibilityModifier.PRIVATE,
+   *     Collections.emptySet(),
+   *     "String",
+   *     "name",
+   *     null);
+   * // Result: private String name; is added to the source code
+   *
+   * // Add a static final field with initialization
+   * service.addFieldDeclaration(tsFile, classNode, insertionPoint,
+   *     JavaVisibilityModifier.PUBLIC,
+   *     Set.of(JavaFieldModifier.STATIC, JavaFieldModifier.FINAL),
+   *     "String",
+   *     "DEFAULT_NAME",
+   *     "\"Unknown\"");
+   * // Result: public static final String DEFAULT_NAME = "Unknown";
+   *
+   * // To find the added field afterward, use findFieldDeclarationNodeByName:
+   * Optional&lt;TSNode&gt; addedField = service.findFieldDeclarationNodeByName(
+   *     tsFile, "name", classNode);
+   * </pre>
+   *
+   * @param tsFile The {@link TSFile} containing the Java source code to modify
+   * @param classDeclarationNode The class declaration {@link TSNode} to add field to
+   * @param insertionPoint The {@link FieldInsertionPoint} specifying where to insert
+   * @param visibility The visibility modifier for the field
+   * @param modifiers Set of additional field modifiers (static, final, etc.)
+   * @param fieldType The type of the field (e.g., "String", "int", "List<String>")
+   * @param fieldName The name of the field
+   * @param initialization Optional initialization value (can be null)
+   */
+  public void addFieldDeclaration(
+      TSFile tsFile,
+      TSNode classDeclarationNode,
+      FieldInsertionPoint insertionPoint,
+      JavaVisibilityModifier visibility,
+      Set<JavaFieldModifier> modifiers,
+      String fieldType,
+      String fieldName,
+      String initialization) {
+    if (tsFile == null
+        || tsFile.getTree() == null
+        || classDeclarationNode == null
+        || insertionPoint == null
+        || Strings.isNullOrEmpty(fieldType)
+        || Strings.isNullOrEmpty(fieldName)) {
+      return;
+    }
+    if (!classDeclarationNode.getType().equals("class_declaration")) {
+      return;
+    }
+    String fieldDeclarationText =
+        this.buildFieldDeclarationText(fieldName, fieldType, visibility, modifiers, initialization);
+    String insertText = fieldDeclarationText;
+    if (insertionPoint.isBreakLineBefore()) {
+      insertText = "\n" + insertText;
+    }
+    if (insertionPoint.isBreakLineAfter()) {
+      insertText = insertText + "\n";
+    }
+    tsFile.updateSourceCode(
+        insertionPoint.getInsertByte(), insertionPoint.getInsertByte(), insertText);
+  }
+
+  /**
+   * Updates an existing field declaration in a Java class.
+   *
+   * <p>This method replaces an existing field declaration with a new one. The field is identified
+   * by the provided {@link TSNode} and replaced entirely with the new field specification. All
+   * properties of the field can be changed including visibility, modifiers, type, name, and
+   * initialization.
+   *
+   * <p>Usage example:
+   *
+   * <pre>
+   * // Find the field to update
+   * Optional&lt;TSNode&gt; fieldNode = service.findFieldDeclarationNodeByName(
+   *     tsFile, "oldFieldName", classNode);
+   * if (fieldNode.isPresent()) {
+   *   // Update the field with new properties
+   *   service.updateFieldDeclaration(tsFile, fieldNode.get(),
+   *       JavaVisibilityModifier.PUBLIC,
+   *       Set.of(JavaFieldModifier.FINAL),
+   *       "String",
+   *       "newFieldName",
+   *       "\"default value\"");
+   *   // Result: public final String newFieldName = "default value";
+   * }
+   * </pre>
+   *
+   * @param tsFile The {@link TSFile} containing the Java source code to modify
+   * @param fieldDeclarationNode The field declaration {@link TSNode} to update
+   * @param visibility The new visibility modifier for the field
+   * @param modifiers Set of new field modifiers (static, final, etc.)
+   * @param fieldType The new type of the field (e.g., "String", "int", "List<String>")
+   * @param fieldName The new name of the field
+   * @param initialization Optional new initialization value (can be null)
+   */
+  public void updateFieldDeclaration(
+      TSFile tsFile,
+      TSNode fieldDeclarationNode,
+      JavaVisibilityModifier visibility,
+      Set<JavaFieldModifier> modifiers,
+      String fieldType,
+      String fieldName,
+      String initialization) {
+    if (tsFile == null
+        || tsFile.getTree() == null
+        || fieldDeclarationNode == null
+        || Strings.isNullOrEmpty(fieldType)
+        || Strings.isNullOrEmpty(fieldName)) {
+      return;
+    }
+    if (!fieldDeclarationNode.getType().equals("field_declaration")) {
+      return;
+    }
+    String fieldDeclarationText =
+        this.buildFieldDeclarationText(fieldName, fieldType, visibility, modifiers, initialization);
+    tsFile.updateSourceCode(fieldDeclarationNode, fieldDeclarationText);
+  }
+
+  /**
+   * Removes a field declaration from a Java class.
+   *
+   * <p>This method completely removes a field declaration from the source code. The field is
+   * identified by the provided {@link TSNode} and deleted entirely, including any associated
+   * whitespace and line breaks to maintain clean formatting.
+   *
+   * <p>Usage example:
+   *
+   * <pre>
+   * // Find the field to remove
+   * Optional&lt;TSNode&gt; fieldNode = service.findFieldDeclarationNodeByName(
+   *     tsFile, "fieldToRemove", classNode);
+   * if (fieldNode.isPresent()) {
+   *   // Remove the field
+   *   service.removeFieldDeclaration(tsFile, fieldNode.get());
+   *   // Field is now completely removed from the source code
+   * }
+   * </pre>
+   *
+   * @param tsFile The {@link TSFile} containing the Java source code to modify
+   * @param fieldDeclarationNode The field declaration {@link TSNode} to remove
+   */
+  public void removeFieldDeclaration(TSFile tsFile, TSNode fieldDeclarationNode) {
+    if (tsFile == null || tsFile.getTree() == null || fieldDeclarationNode == null) {
+      return;
+    }
+    if (!fieldDeclarationNode.getType().equals("field_declaration")) {
+      return;
+    }
+    int startByte = fieldDeclarationNode.getStartByte();
+    int endByte = fieldDeclarationNode.getEndByte();
+    String sourceCode = tsFile.getSourceCode();
+    if (endByte < sourceCode.length() && sourceCode.charAt(endByte) == '\n') {
+      endByte++; // Include the newline character
+    }
+    tsFile.updateSourceCode(startByte, endByte, "");
   }
 }

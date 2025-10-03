@@ -24,7 +24,8 @@ import picocli.CommandLine.Command;
       CreateNewJPAEntityCommand.class,
       CreateJPARepositoryCommand.class,
       GetJPAEntityInfoCommand.class,
-      GetAllFilesCommand.class
+      GetAllFilesCommand.class,
+      CreateJPAEntityFieldCommand.class
     })
 public class Core {
 
@@ -111,6 +112,8 @@ public class Core {
         new CreateJPARepositoryCommandService(javaLanguageService, createNewFileCommandService, getJPAEntityInfoCommandService);
     GetAllFilesCommandService getAllFilesCommandService =
         new GetAllFilesCommandService(javaLanguageService);
+    CreateJPAEntityFieldCommandService createJPAEntityFieldCommandService =
+        new CreateJPAEntityFieldCommandService(javaLanguageService);
     return new CommandFactory(
         renameCommandService,
         getMainClassCommandService,
@@ -119,6 +122,7 @@ public class Core {
         createNewJPAEntityCommandService,
         createJPARepositoryCommandService,
         getJPAEntityInfoCommandService,
-        getAllFilesCommandService);
+        getAllFilesCommandService,
+        createJPAEntityFieldCommandService);
   }
 }

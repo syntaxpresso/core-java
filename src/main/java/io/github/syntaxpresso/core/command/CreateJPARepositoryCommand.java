@@ -22,7 +22,7 @@ public class CreateJPARepositoryCommand
   @Option(names = "--cwd", description = "Current Working Directory", required = true)
   private Path cwd;
 
-  @Option(names = "--file-path", description = "The path to the file", required = true)
+  @Option(names = "--file-path", description = "The absolute path to the JPA Entity file", required = true)
   private Path filePath;
 
   @Option(

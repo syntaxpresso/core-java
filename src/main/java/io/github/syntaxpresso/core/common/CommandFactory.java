@@ -15,6 +15,7 @@ public class CommandFactory implements IFactory {
   private final CreateJPARepositoryCommandService createJPARepositoryCommandService;
   private final GetJPAEntityInfoCommandService getJPAEntityInfoCommandService;
   private final GetAllFilesCommandService getAllFilesCommandService;
+  private final CreateJPAEntityFieldCommandService createJPAEntityFieldCommandService;
 
   @Override
   @SuppressWarnings("unchecked")
@@ -42,6 +43,9 @@ public class CommandFactory implements IFactory {
     }
     if (cls == GetAllFilesCommand.class) {
       return (K) new GetAllFilesCommand(getAllFilesCommandService);
+    }
+    if (cls == CreateJPAEntityFieldCommand.class) {
+      return (K) new CreateJPAEntityFieldCommand(createJPAEntityFieldCommandService);
     }
     return cls.getDeclaredConstructor().newInstance();
   }
