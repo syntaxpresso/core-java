@@ -3,6 +3,8 @@ package io.github.syntaxpresso.core.command;
 import static org.junit.jupiter.api.Assertions.*;
 
 import io.github.syntaxpresso.core.command.dto.CreateNewFileResponse;
+import io.github.syntaxpresso.core.command.extra.JavaFieldTemporal;
+import io.github.syntaxpresso.core.command.extra.JavaFieldTimeZoneStorage;
 import io.github.syntaxpresso.core.command.extra.JavaFieldType;
 import io.github.syntaxpresso.core.common.DataTransferObject;
 import io.github.syntaxpresso.core.common.extra.SupportedIDE;
@@ -239,8 +241,8 @@ class CreateJPAEntityFieldCommandTest {
           null,
           null,
           null,
-          1,
-          2,
+          JavaFieldTemporal.TIMESTAMP,
+          JavaFieldTimeZoneStorage.NATIVE,
           true,
           false,
           false,
@@ -251,8 +253,8 @@ class CreateJPAEntityFieldCommandTest {
 
       // Then
       assertTrue(result.getSucceed());
-      assertEquals(1, testService.getLastCalledFieldTemporal());
-      assertEquals(2, testService.getLastCalledFieldTimeZoneStorage());
+      assertEquals(JavaFieldTemporal.TIMESTAMP, testService.getLastCalledFieldTemporal());
+      assertEquals(JavaFieldTimeZoneStorage.NATIVE, testService.getLastCalledFieldTimeZoneStorage());
       assertFalse(testService.getLastCalledFieldUpdatable());
     }
 
@@ -428,8 +430,8 @@ class CreateJPAEntityFieldCommandTest {
       Integer fieldLength,
       Integer fieldPrecision,
       Integer fieldScale,
-      Integer fieldTemporal,
-      Integer fieldTimeZoneStorage,
+      JavaFieldTemporal fieldTemporal,
+      JavaFieldTimeZoneStorage fieldTimeZoneStorage,
       boolean fieldNullable,
       boolean fieldUnique,
       boolean fieldUpdatable,
@@ -485,8 +487,8 @@ class CreateJPAEntityFieldCommandTest {
     private Integer lastCalledFieldLength;
     private Integer lastCalledFieldPrecision;
     private Integer lastCalledFieldScale;
-    private Integer lastCalledFieldTemporal;
-    private Integer lastCalledFieldTimeZoneStorage;
+    private JavaFieldTemporal lastCalledFieldTemporal;
+    private JavaFieldTimeZoneStorage lastCalledFieldTimeZoneStorage;
     private boolean lastCalledFieldNullable;
     private boolean lastCalledFieldUnique;
     private boolean lastCalledFieldUpdatable;
@@ -509,8 +511,8 @@ class CreateJPAEntityFieldCommandTest {
         Integer fieldLength,
         Integer fieldPrecision,
         Integer fieldScale,
-        Integer fieldTemporal,
-        Integer fieldTimeZoneStorage,
+        JavaFieldTemporal fieldTemporal,
+        JavaFieldTimeZoneStorage fieldTimeZoneStorage,
         boolean fieldNullable,
         boolean fieldUnique,
         boolean fieldUpdatable,
@@ -585,11 +587,11 @@ class CreateJPAEntityFieldCommandTest {
       return this.lastCalledFieldScale;
     }
 
-    public Integer getLastCalledFieldTemporal() {
+    public JavaFieldTemporal getLastCalledFieldTemporal() {
       return this.lastCalledFieldTemporal;
     }
 
-    public Integer getLastCalledFieldTimeZoneStorage() {
+    public JavaFieldTimeZoneStorage getLastCalledFieldTimeZoneStorage() {
       return this.lastCalledFieldTimeZoneStorage;
     }
 

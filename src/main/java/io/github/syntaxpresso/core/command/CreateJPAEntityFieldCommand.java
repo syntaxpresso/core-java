@@ -1,6 +1,8 @@
 package io.github.syntaxpresso.core.command;
 
 import io.github.syntaxpresso.core.command.dto.CreateNewFileResponse;
+import io.github.syntaxpresso.core.command.extra.JavaFieldTemporal;
+import io.github.syntaxpresso.core.command.extra.JavaFieldTimeZoneStorage;
 import io.github.syntaxpresso.core.command.extra.JavaFieldType;
 import io.github.syntaxpresso.core.common.DataTransferObject;
 import io.github.syntaxpresso.core.common.extra.SupportedIDE;
@@ -54,13 +56,13 @@ public class CreateJPAEntityFieldCommand
       names = "--field-temporal",
       description = "The temporal type for date/time fields",
       required = false)
-  private Integer fieldTemporal;
+  private JavaFieldTemporal fieldTemporal;
 
   @Option(
       names = "--field-time-zone-storage",
       description = "The time zone storage configuration for timestamp fields",
       required = false)
-  private Integer fieldTimeZoneStorage;
+  private JavaFieldTimeZoneStorage fieldTimeZoneStorage;
 
   @Option(names = "--field-type", description = "The Java type of the field", required = false)
   private String fieldType;
@@ -110,25 +112,26 @@ public class CreateJPAEntityFieldCommand
   @Override
   public DataTransferObject<CreateNewFileResponse> call() {
     if (this.language.equals(SupportedLanguage.JAVA)) {
-      DataTransferObject<Void> result = this.createJPAEntityFieldCommandService.run(
-          this.cwd,
-          this.filePath,
-          this.language,
-          this.ide,
-          this.fieldName,
-          this.fieldType,
-          this.fieldTypePackageName,
-          this.fieldLength,
-          this.fieldPrecision,
-          this.fieldScale,
-          this.fieldTemporal,
-          this.fieldTimeZoneStorage,
-          this.fieldNullable,
-          this.fieldUnique,
-          this.fieldUpdatable,
-          this.fieldLargeObject,
-          this.type);
-      
+      DataTransferObject<Void> result =
+          this.createJPAEntityFieldCommandService.run(
+              this.cwd,
+              this.filePath,
+              this.language,
+              this.ide,
+              this.fieldName,
+              this.fieldType,
+              this.fieldTypePackageName,
+              this.fieldLength,
+              this.fieldPrecision,
+              this.fieldScale,
+              this.fieldTemporal,
+              this.fieldTimeZoneStorage,
+              this.fieldNullable,
+              this.fieldUnique,
+              this.fieldUpdatable,
+              this.fieldLargeObject,
+              this.type);
+
       if (result.getSucceed()) {
         return DataTransferObject.success(
             new CreateNewFileResponse("JPA Entity field created successfully"));

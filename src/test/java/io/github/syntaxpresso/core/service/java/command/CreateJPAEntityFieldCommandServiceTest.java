@@ -2,6 +2,8 @@ package io.github.syntaxpresso.core.service.java.command;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import io.github.syntaxpresso.core.command.extra.JavaFieldTemporal;
+import io.github.syntaxpresso.core.command.extra.JavaFieldTimeZoneStorage;
 import io.github.syntaxpresso.core.command.extra.JavaFieldType;
 import io.github.syntaxpresso.core.common.DataTransferObject;
 import io.github.syntaxpresso.core.common.extra.SupportedIDE;
@@ -214,7 +216,7 @@ class CreateJPAEntityFieldCommandServiceTest {
       DataTransferObject<Void> result = service.run(
           tempDir, entityFile, SupportedLanguage.JAVA, SupportedIDE.NONE,
           "eventDate", "Date", "java.util",
-          null, null, null, 1, null, // 1 = DATE
+          null, null, null, JavaFieldTemporal.DATE, null,
           true, false, true, false,
           JavaFieldType.BASIC);
 
@@ -660,7 +662,7 @@ class CreateJPAEntityFieldCommandServiceTest {
       DataTransferObject<Void> result = service.run(
           tempDir, entityFile, SupportedLanguage.JAVA, SupportedIDE.NONE,
           "createdAt", "Date", "java.util",
-          null, null, null, 1, null, // temporal field
+          null, null, null, JavaFieldTemporal.TIMESTAMP, null, // temporal field
           false, false, false, true, // large object
           JavaFieldType.BASIC);
 
