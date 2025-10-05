@@ -9,6 +9,7 @@ import io.github.syntaxpresso.core.service.java.language.AnnotationDeclarationSe
 import io.github.syntaxpresso.core.service.java.language.AnnotationService;
 import io.github.syntaxpresso.core.service.java.language.ClassDeclarationService;
 import io.github.syntaxpresso.core.service.java.language.EnumDeclarationService;
+import io.github.syntaxpresso.core.service.java.language.FieldDeclarationService;
 import io.github.syntaxpresso.core.service.java.language.ImportDeclarationService;
 import io.github.syntaxpresso.core.service.java.language.InterfaceDeclarationService;
 import io.github.syntaxpresso.core.service.java.language.LocalVariableDeclarationService;
@@ -38,6 +39,7 @@ public class JavaLanguageService {
   private final ImportDeclarationService importDeclarationService;
   private final LocalVariableDeclarationService localVariableDeclarationService;
   private final AnnotationService annotationService;
+  private final FieldDeclarationService fieldDeclarationService;
 
   /**
    * Gets all Java files from the current working directory based on source directory type.

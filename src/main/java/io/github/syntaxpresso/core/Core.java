@@ -8,7 +8,15 @@ import io.github.syntaxpresso.core.command.GetMainClassCommand;
 import io.github.syntaxpresso.core.command.RenameCommand;
 import io.github.syntaxpresso.core.common.CommandFactory;
 import io.github.syntaxpresso.core.service.java.JavaLanguageService;
+import io.github.syntaxpresso.core.service.java.JPAAnnotationService;
 import io.github.syntaxpresso.core.service.java.command.*;
+import io.github.syntaxpresso.core.service.java.jpa.ColumnAnnotationService;
+import io.github.syntaxpresso.core.service.java.jpa.EntityAnnotationService;
+import io.github.syntaxpresso.core.service.java.jpa.FieldAnnotationService;
+import io.github.syntaxpresso.core.service.java.jpa.IdAnnotationService;
+import io.github.syntaxpresso.core.service.java.jpa.LobAnnotationService;
+import io.github.syntaxpresso.core.service.java.jpa.TemporalAnnotationService;
+import io.github.syntaxpresso.core.service.java.jpa.TimeZoneStorageAnnotationService;
 import io.github.syntaxpresso.core.service.java.language.*;
 import io.github.syntaxpresso.core.util.PathHelper;
 import java.util.concurrent.Callable;
@@ -95,7 +103,8 @@ public class Core {
             packageDeclarationService,
             importDeclarationService,
             localVariableDeclarationService,
-            annotationService);
+            annotationService,
+            fieldDeclarationService);
     RenameCommandService renameCommandService =
         new RenameCommandService(variableNamingService, javaLanguageService);
     GetMainClassCommandService getMainClassCommandService =
@@ -112,8 +121,18 @@ public class Core {
         new CreateJPARepositoryCommandService(javaLanguageService, createNewFileCommandService, getJPAEntityInfoCommandService);
     GetAllFilesCommandService getAllFilesCommandService =
         new GetAllFilesCommandService(javaLanguageService);
+    ColumnAnnotationService columnAnnotationService = new ColumnAnnotationService(javaLanguageService);
+    EntityAnnotationService entityAnnotationService = new EntityAnnotationService(javaLanguageService);
+    IdAnnotationService idAnnotationService = new IdAnnotationService(javaLanguageService);
+    FieldAnnotationService fieldAnnotationService = new FieldAnnotationService(javaLanguageService);
+    TemporalAnnotationService temporalAnnotationService = new TemporalAnnotationService(javaLanguageService);
+    TimeZoneStorageAnnotationService timeZoneStorageAnnotationService = new TimeZoneStorageAnnotationService(javaLanguageService);
+    LobAnnotationService lobAnnotationService = new LobAnnotationService(javaLanguageService);
+    JPAAnnotationService jpaAnnotationService = new JPAAnnotationService(
+        columnAnnotationService, entityAnnotationService, idAnnotationService, fieldAnnotationService,
+        temporalAnnotationService, timeZoneStorageAnnotationService, lobAnnotationService);
     CreateJPAEntityFieldCommandService createJPAEntityFieldCommandService =
-        new CreateJPAEntityFieldCommandService(javaLanguageService);
+        new CreateJPAEntityFieldCommandService(javaLanguageService, jpaAnnotationService);
     return new CommandFactory(
         renameCommandService,
         getMainClassCommandService,
