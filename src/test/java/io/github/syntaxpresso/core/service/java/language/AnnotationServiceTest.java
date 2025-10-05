@@ -483,7 +483,7 @@ class AnnotationServiceTest {
       TSNode annotationNode = tsFile.query("(marker_annotation) @annotation").execute().firstNode();
 
       String originalCode = tsFile.getSourceCode();
-      annotationService.addAnnotationArgument(tsFile, annotationNode, "name", "\"test\"");
+      annotationService.addAnnotationArgument(tsFile, annotationNode, "name", "test");
       String updatedCode = tsFile.getSourceCode();
 
       assertTrue(updatedCode.contains("@Column(name = \"test\")"));
@@ -498,7 +498,7 @@ class AnnotationServiceTest {
       TSNode annotationNode = tsFile.query("(annotation) @annotation").execute().firstNode();
 
       String originalCode = tsFile.getSourceCode();
-      annotationService.addAnnotationArgument(tsFile, annotationNode, "nullable", "false");
+      annotationService.addAnnotationArgument(tsFile, annotationNode, "nullable", false);
       String updatedCode = tsFile.getSourceCode();
 
       assertTrue(updatedCode.contains("@Column(name = \"test\", nullable = false)"));
@@ -512,11 +512,11 @@ class AnnotationServiceTest {
       TSFile tsFile = new TSFile(SupportedLanguage.JAVA, code);
       TSNode annotationNode = tsFile.query("(marker_annotation) @annotation").execute().firstNode();
 
-      annotationService.addAnnotationArgument(tsFile, annotationNode, "name", "\"users\"");
+      annotationService.addAnnotationArgument(tsFile, annotationNode, "name", "users");
       
       // Re-query the annotation node after the first modification since the tree is updated
       TSNode updatedAnnotationNode = tsFile.query("(annotation) @annotation").execute().firstNode();
-      annotationService.addAnnotationArgument(tsFile, updatedAnnotationNode, "schema", "\"public\"");
+      annotationService.addAnnotationArgument(tsFile, updatedAnnotationNode, "schema", "public");
       
       String updatedCode = tsFile.getSourceCode();
       assertTrue(updatedCode.contains("@Entity(name = \"users\", schema = \"public\")"));
@@ -530,10 +530,10 @@ class AnnotationServiceTest {
       TSNode annotationNode = tsFile.query("(marker_annotation) @annotation").execute().firstNode();
       String originalCode = tsFile.getSourceCode();
 
-      annotationService.addAnnotationArgument(null, annotationNode, "name", "\"test\"");
-      annotationService.addAnnotationArgument(tsFile, null, "name", "\"test\"");
-      annotationService.addAnnotationArgument(tsFile, annotationNode, null, "\"test\"");
-      annotationService.addAnnotationArgument(tsFile, annotationNode, "", "\"test\"");
+      annotationService.addAnnotationArgument(null, annotationNode, "name", "test");
+      annotationService.addAnnotationArgument(tsFile, null, "name", "test");
+      annotationService.addAnnotationArgument(tsFile, annotationNode, null, "test");
+      annotationService.addAnnotationArgument(tsFile, annotationNode, "", "test");
       annotationService.addAnnotationArgument(tsFile, annotationNode, "name", null);
       annotationService.addAnnotationArgument(tsFile, annotationNode, "name", "");
 
@@ -549,7 +549,7 @@ class AnnotationServiceTest {
       TSNode identifierNode = tsFile.query("(identifier) @id").execute().firstNode();
       String originalCode = tsFile.getSourceCode();
 
-      annotationService.addAnnotationArgument(tsFile, identifierNode, "name", "\"test\"");
+      annotationService.addAnnotationArgument(tsFile, identifierNode, "name", "test");
 
       String finalCode = tsFile.getSourceCode();
       assertEquals(originalCode, finalCode);

@@ -9,6 +9,7 @@ import io.github.syntaxpresso.core.common.DataTransferObject;
 import io.github.syntaxpresso.core.common.extra.SupportedIDE;
 import io.github.syntaxpresso.core.common.extra.SupportedLanguage;
 import io.github.syntaxpresso.core.service.java.JavaLanguageService;
+import io.github.syntaxpresso.core.service.java.JPAAnnotationService;
 import io.github.syntaxpresso.core.service.java.language.AnnotationDeclarationService;
 import io.github.syntaxpresso.core.service.java.language.AnnotationService;
 import io.github.syntaxpresso.core.service.java.language.ClassDeclarationService;
@@ -82,10 +83,12 @@ class CreateJPAEntityFieldCommandServiceTest {
         packageDeclarationService,
         importDeclarationService,
         localVariableDeclarationService,
-        annotationService);
+        annotationService,
+        fieldDeclarationService);
     
     // StringHelper is not needed as dependency since it's used statically
-    service = new CreateJPAEntityFieldCommandService(javaLanguageService);
+    JPAAnnotationService jpaAnnotationService = null; // Mock not needed for these tests
+    service = new CreateJPAEntityFieldCommandService(javaLanguageService, jpaAnnotationService);
   }
 
   @Nested

@@ -82,7 +82,8 @@ class JavaLanguageServiceTest {
             packageDeclarationService,
             importDeclarationService,
             localVariableDeclarationService,
-            annotationService);
+            annotationService,
+            fieldDeclarationService);
   }
 
   @Nested

@@ -496,7 +496,7 @@ class CreateJPAEntityFieldCommandTest {
     private JavaFieldType lastCalledType;
 
     public TestCreateJPAEntityFieldCommandService() {
-      super(null); // Mock dependencies are not used in tests
+      super(null, null); // Mock dependencies are not used in tests
     }
 
     @Override
