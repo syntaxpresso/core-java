@@ -61,7 +61,7 @@ public class AnnotationService {
           ]
         )
         """;
-    return tsFile.query(queryString).execute().nodes();
+    return tsFile.query(queryString).within(scopeNode).execute().nodes();
   }
 
   /**
@@ -533,6 +533,46 @@ public class AnnotationService {
   }
 
   /**
+   * Formats annotation argument values based on their type for proper Java annotation syntax
+   *
+   * @param value the value to format
+   * @return the formatted value as a string
+   */
+  private String formatAnnotationValue(Object value) {
+    if (value == null) {
+      return "null";
+    }
+    if (value instanceof String) {
+      String stringValue = (String) value;
+      // Don't format complex annotation syntax (values starting with @)
+      if (stringValue.startsWith("@")) {
+        return stringValue;
+      }
+      // Don't quote enum constants - check for known enum prefixes
+      if (this.isEnumConstant(stringValue)) {
+        return stringValue;
+      }
+      return "\"" + stringValue + "\""; // Regular strings need quotes
+    }
+    if (value instanceof Integer || value instanceof Long || value instanceof Boolean) {
+      return value.toString(); // Numbers and booleans don't need quotes
+    }
+    // For other types, convert to string representation
+    return value.toString();
+  }
+
+  /**
+   * Checks if a string represents an enum constant that should not be quoted
+   * 
+   * @param value the string value to check
+   * @return true if the value is a known enum constant
+   */
+  private boolean isEnumConstant(String value) {
+    return value.startsWith("TemporalType.") || 
+           value.startsWith("TimeZoneStorageType.");
+  }
+
+  /**
    * Adds an argument to an existing annotation. Converts marker annotations to regular annotations
    * if necessary.
    *
@@ -547,32 +587,34 @@ public class AnnotationService {
    * // Convert @Column to @Column(name = "test")
    * Optional&lt;TSNode&gt; columnAnnotation = service.findAnnotationByName(tsFile, fieldNode, "Column");
    * if (columnAnnotation.isPresent()) {
-   *   service.addAnnotationArgument(tsFile, columnAnnotation.get(), "name", "\"test\"");
+   *   service.addAnnotationArgument(tsFile, columnAnnotation.get(), "name", "test");
    * }
    *
    * // Add another argument: @Column(name = "test", nullable = false)
-   * service.addAnnotationArgument(tsFile, columnAnnotation.get(), "nullable", "false");
+   * service.addAnnotationArgument(tsFile, columnAnnotation.get(), "nullable", false);
    * </pre>
    *
    * @param tsFile The {@link TSFile} containing the Java source code to modify
    * @param annotationNode The annotation node to add the argument to
    * @param key The argument key name (e.g., "name", "nullable")
-   * @param value The argument value (e.g., "\"test\"", "false", "true")
+   * @param value The argument value (e.g., "test", false, 42)
    */
   public void addAnnotationArgument(
-      TSFile tsFile, TSNode annotationNode, String key, String value) {
+      TSFile tsFile, TSNode annotationNode, String key, Object value) {
     if (tsFile == null
         || tsFile.getTree() == null
         || annotationNode == null
         || Strings.isNullOrEmpty(key)
-        || Strings.isNullOrEmpty(value)) {
+        || value == null
+        || (value instanceof String && Strings.isNullOrEmpty((String) value))) {
       return;
     }
     String nodeType = annotationNode.getType();
     if (!nodeType.equals("annotation") && !nodeType.equals("marker_annotation")) {
       return;
     }
-    String argumentPair = key + " = " + value;
+    String formattedValue = this.formatAnnotationValue(value);
+    String argumentPair = key + " = " + formattedValue;
     if (nodeType.equals("marker_annotation")) {
       Optional<TSNode> nameNode = this.getAnnotationNameNode(tsFile, annotationNode);
       if (nameNode.isEmpty()) {
